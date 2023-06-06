@@ -1,13 +1,10 @@
 package todo
 
-//go:generate go run github.com/YuukanOO/ease
+//go:generate go run github.com/YuukanOO/ease/cmd github.com/YuukanOO/ease/todo...
 
 import (
 	"context"
 	"errors"
-	"fmt"
-
-	toto "github.com/YuukanOO/ease/todo/pkg/storage"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -18,7 +15,6 @@ type TodoService struct {
 
 // Builds up a new TodoService.
 func NewTodoService() *TodoService {
-	fmt.Println(toto.DB{})
 	return &TodoService{
 		todos: make([]*Todo, 0),
 	}
@@ -65,4 +61,11 @@ func (s *TodoService) Update(ctx context.Context, id uint, cmd TodoUpdateCommand
 	}
 
 	return nil, ErrNotFound
+}
+
+// Gets the server health
+//
+//ease:api method=GET path=/api/_health
+func HealthCheck(ctx context.Context) (string, error) {
+	return "ok", nil
 }
