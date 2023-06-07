@@ -27,7 +27,7 @@ type TodoCreateCommand struct {
 // Creates a new todo with the given text content.
 //
 //ease:api method=POST path=/api/todos
-func (s *TodoService) Create(ctx context.Context, cmd TodoCreateCommand) (*Todo, error) {
+func (s *TodoService) Create(ctx context.Context, cmd *TodoCreateCommand) (*Todo, error) {
 	todo := &Todo{
 		ID:        uint(len(s.todos) + 1),
 		Text:      cmd.Text,

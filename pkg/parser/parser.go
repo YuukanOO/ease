@@ -15,8 +15,6 @@ type (
 	}
 
 	Extension interface {
-		// Initialize the extension before parsing occurs.
-		Init() error
 		// Visit the given file and look for extension related informations.
 		Visit(*File) error
 	}
@@ -49,13 +47,6 @@ func (p *parserImpl) Parse(packageNames ...string) error {
 
 	if err != nil {
 		return err
-	}
-
-	// Initialize all extensions
-	for _, ext := range p.extensions {
-		if err := ext.Init(); err != nil {
-			return err
-		}
 	}
 
 	// And process each package files

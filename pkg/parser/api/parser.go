@@ -1,14 +1,21 @@
 package api
 
 import (
+	"errors"
+	"fmt"
 	"go/ast"
+	"go/types"
 
 	"github.com/YuukanOO/ease/pkg/parser"
 )
 
+var (
+	ErrInvalidPath = errors.New("invalid API path")
+)
+
 type (
 	apiParser struct {
-		Result *API
+		Schema *API
 	}
 
 	API struct {
@@ -16,30 +23,29 @@ type (
 	}
 
 	Endpoint struct {
-		Method Method `ini:"method"`
-		Path   string `ini:"path"`
+		Method Method
+		Path   string
 	}
 
 	Method string
 )
 
 const (
-	MethodGet    Method = "GET"
-	MethodPost   Method = "POST"
-	MethodPatch  Method = "PATCH"
-	MethodPut    Method = "PUT"
-	MethodDelete Method = "DELETE"
+	MethodOptions Method = "OPTIONS"
+	MethodGet     Method = "GET"
+	MethodPost    Method = "POST"
+	MethodPatch   Method = "PATCH"
+	MethodPut     Method = "PUT"
+	MethodDelete  Method = "DELETE"
+	MethodInvalid Method = ""
 
-	annotation = "//ease:api"
+	api = "api"
 )
 
 func New() parser.Extension {
-	return &apiParser{}
-}
-
-func (p *apiParser) Init() error {
-	p.Result = &API{}
-	return nil
+	return &apiParser{
+		Schema: &API{},
+	}
 }
 
 func (p *apiParser) Visit(file *parser.File) error {
@@ -50,37 +56,68 @@ func (p *apiParser) Visit(file *parser.File) error {
 			continue
 		}
 
-		var endpoint Endpoint
+		for _, directive := range parser.ParseDirectives(decl.Doc, api) {
+			switch directive.Name {
+			case api:
+				endpoint, err := parseEndpoint(directive, decl)
 
-		annotationFound, err := parser.ParseAnnotation(annotation, decl.Doc, &endpoint)
+				obj := file.Pkg.Types.Scope().Lookup("TodoService").Type().(*types.Named)
+				sig := obj.Method(0).Type().(*types.Signature)
+				p1 := sig.Params().At(1)
 
-		if err != nil {
-			return err
+				fmt.Println(p1)
+
+				if err != nil {
+					return err
+				}
+
+				p.Schema.Endpoints = append(p.Schema.Endpoints, endpoint)
+			}
 		}
-
-		if !annotationFound {
-			continue
-		}
-
-		p.Result.Endpoints = append(p.Result.Endpoints, &endpoint)
-
-		if decl.Recv == nil {
-			continue
-		}
-
-		// var typeName string
-		// recvExpr := decl.Recv.List[0].Type
-
-		// switch t := recvExpr.(type) {
-		// case *ast.StarExpr:
-		// 	typeName = t.X.(*ast.Ident).Name
-		// case *ast.Ident:
-		// 	typeName = t.Name
-		// }
-
-		// obj := file.Pkg.Types.Scope().Lookup(typeName)
-		// fmt.Println(obj)
 	}
 
 	return nil
+}
+
+func parseEndpoint(directive *parser.Directive, decl *ast.FuncDecl) (*Endpoint, error) {
+	endpoint := &Endpoint{}
+
+	for name, value := range directive.Params {
+		switch name {
+		case "method":
+			endpoint.Method = methodFromRawValue(value)
+		case "path":
+			endpoint.Path = value
+		}
+	}
+
+	// Default to GET if not specified.
+	if endpoint.Method == MethodInvalid {
+		endpoint.Method = MethodGet
+	}
+
+	if endpoint.Path == "" {
+		return nil, ErrInvalidPath
+	}
+
+	return endpoint, nil
+}
+
+func methodFromRawValue(value string) Method {
+	switch value {
+	case "OPTIONS":
+		return MethodOptions
+	case "GET":
+		return MethodGet
+	case "POST":
+		return MethodPost
+	case "PATCH":
+		return MethodPatch
+	case "PUT":
+		return MethodPut
+	case "DELETE":
+		return MethodDelete
+	default:
+		return MethodInvalid
+	}
 }
