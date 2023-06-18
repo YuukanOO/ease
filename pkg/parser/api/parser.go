@@ -2,122 +2,64 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"go/ast"
-	"go/types"
 
 	"github.com/YuukanOO/ease/pkg/parser"
 )
 
 var (
-	ErrInvalidPath = errors.New("invalid API path")
+	ErrInvalidPath   = errors.New("invalid API path")
+	ErrInvalidMethod = errors.New("invalid HTTP method")
 )
 
 type (
+	Extension interface {
+		parser.Extension
+		Schema() *API
+	}
+
 	apiParser struct {
-		Schema *API
+		schema *API
 	}
-
-	API struct {
-		Endpoints []*Endpoint
-	}
-
-	Endpoint struct {
-		Method Method
-		Path   string
-	}
-
-	Method string
 )
 
 const (
-	MethodOptions Method = "OPTIONS"
-	MethodGet     Method = "GET"
-	MethodPost    Method = "POST"
-	MethodPatch   Method = "PATCH"
-	MethodPut     Method = "PUT"
-	MethodDelete  Method = "DELETE"
-	MethodInvalid Method = ""
-
-	api = "api"
+	apiDirective         = "api"
+	methodDirectiveParam = "method"
+	pathDirectiveParam   = "path"
 )
 
-func New() parser.Extension {
+// Builds a new API parser to process files and extract an API schema.
+func New() Extension {
 	return &apiParser{
-		Schema: &API{},
+		schema: &API{},
 	}
 }
 
-func (p *apiParser) Visit(file *parser.File) error {
-	for _, decl := range file.Ast.Decls {
-		decl, ok := decl.(*ast.FuncDecl)
+// Returns the API schema that was build by the parser.
+func (p *apiParser) Schema() *API { return p.schema }
 
-		if !ok || !decl.Name.IsExported() {
+func (p *apiParser) Visit(resolver parser.TypeResolver, file *ast.File) error {
+	for _, decl := range file.Decls {
+		decl, isFunc := decl.(*ast.FuncDecl)
+
+		if !isFunc || !decl.Name.IsExported() {
 			continue
 		}
 
-		for _, directive := range parser.ParseDirectives(decl.Doc, api) {
+		for _, directive := range parser.ParseDirectives(decl.Doc, apiDirective) {
 			switch directive.Name {
-			case api:
-				endpoint, err := parseEndpoint(directive, decl)
-
-				obj := file.Pkg.Types.Scope().Lookup("TodoService").Type().(*types.Named)
-				sig := obj.Method(0).Type().(*types.Signature)
-				p1 := sig.Params().At(1)
-
-				fmt.Println(p1)
+			case apiDirective:
+				endpoint, err := parseEndpoint(directive, resolver, decl)
 
 				if err != nil {
 					return err
 				}
 
-				p.Schema.Endpoints = append(p.Schema.Endpoints, endpoint)
+				p.schema.endpoints = append(p.schema.endpoints, endpoint)
 			}
 		}
 	}
 
 	return nil
-}
-
-func parseEndpoint(directive *parser.Directive, decl *ast.FuncDecl) (*Endpoint, error) {
-	endpoint := &Endpoint{}
-
-	for name, value := range directive.Params {
-		switch name {
-		case "method":
-			endpoint.Method = methodFromRawValue(value)
-		case "path":
-			endpoint.Path = value
-		}
-	}
-
-	// Default to GET if not specified.
-	if endpoint.Method == MethodInvalid {
-		endpoint.Method = MethodGet
-	}
-
-	if endpoint.Path == "" {
-		return nil, ErrInvalidPath
-	}
-
-	return endpoint, nil
-}
-
-func methodFromRawValue(value string) Method {
-	switch value {
-	case "OPTIONS":
-		return MethodOptions
-	case "GET":
-		return MethodGet
-	case "POST":
-		return MethodPost
-	case "PATCH":
-		return MethodPatch
-	case "PUT":
-		return MethodPut
-	case "DELETE":
-		return MethodDelete
-	default:
-		return MethodInvalid
-	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/YuukanOO/ease/pkg/parser"
@@ -17,11 +18,15 @@ func main() {
 
 	pkgsToAnalyze := os.Args[1:]
 
-	p := parser.New(
-		api.New(),
-	)
+	apiParser := api.New()
+
+	p := parser.New(apiParser)
 
 	if err := p.Parse(pkgsToAnalyze...); err != nil {
 		panic(err)
 	}
+
+	schema := apiParser.Schema()
+
+	fmt.Println(schema)
 }
