@@ -3,9 +3,10 @@ package main
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/YuukanOO/ease/pkg/generator"
-	"github.com/YuukanOO/ease/pkg/generator/ginhttp"
+	"github.com/YuukanOO/ease/pkg/generator/gin"
 	"github.com/YuukanOO/ease/pkg/parser"
 	"github.com/YuukanOO/ease/pkg/parser/api"
 )
@@ -19,15 +20,30 @@ func main() {
 
 	pkgsToAnalyze := os.Args[1:]
 
+	// Instantiate specific parsers
 	apiParser := api.New()
 
-	p := parser.New(apiParser)
+	result, err := parser.
+		New(apiParser).
+		Parse(pkgsToAnalyze...)
 
-	if err := p.Parse(pkgsToAnalyze...); err != nil {
+	if err != nil {
 		panic(err)
 	}
 
-	if err := generator.New(ginhttp.New(apiParser.Schema())).Generate(); err != nil {
+	// Instantiate specific generators
+	ginGenerator := gin.New(apiParser.Schema())
+
+	// Retrieve the working directory to compute the output path
+	wd, err := os.Getwd()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if err := generator.
+		New(filepath.Join(wd, "generated"), ginGenerator).
+		Generate(result); err != nil {
 		panic(err)
 	}
 }

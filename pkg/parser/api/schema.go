@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	FromPath  ParamFrom = iota // Params is extracted from the route path (:id for example)
-	FromQuery                  // Params is extracted from the query string
-	FromBody                   // Params is extracted from the request body
+	FromSource ParamFrom = iota // Params is extracted from the request source (path, query string or body)
+	FromPath                    // Params is extracted from the route path (:id for example)
+	FromQuery                   // Params is extracted from the query string
+	FromBody                    // Params is extracted from the request body
 
 	MethodOptions Method = "OPTIONS"
 	MethodGet     Method = "GET"
@@ -38,7 +39,7 @@ type (
 		method  Method
 		path    string
 		params  []*Param
-		returns *parser.Var
+		returns []*parser.Var
 	}
 
 	Param struct {
@@ -55,12 +56,16 @@ func (s *API) Title() string          { return s.title }
 func (s *API) Description() string    { return s.description }
 func (s *API) Endpoints() []*Endpoint { return s.endpoints }
 
-func (e *Endpoint) String() string        { return fmt.Sprintf("%s %s", e.method, e.path) }
-func (e *Endpoint) Handler() *parser.Func { return e.handler }
-func (e *Endpoint) Method() Method        { return e.method }
-func (e *Endpoint) Path() string          { return e.path }
-func (e *Endpoint) Params() []*Param      { return e.params }
-func (e *Endpoint) Returns() *parser.Var  { return e.returns }
+func (e *Endpoint) String() string         { return fmt.Sprintf("%s %s", e.method, e.path) }
+func (e *Endpoint) Handler() *parser.Func  { return e.handler }
+func (e *Endpoint) Method() Method         { return e.method }
+func (e *Endpoint) Path() string           { return e.path }
+func (e *Endpoint) Params() []*Param       { return e.params }
+func (e *Endpoint) Returns() []*parser.Var { return e.returns }
+
+func (p *Param) Name() string      { return p.name }
+func (p *Param) Src() ParamFrom    { return p.src }
+func (p *Param) Decl() *parser.Var { return p.decl }
 
 func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint, error) {
 	endpoint := &Endpoint{}
@@ -85,16 +90,19 @@ func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint
 	}
 
 	endpoint.handler = handler
+	endpoint.params = make([]*Param, len(endpoint.handler.Params()))
+	endpoint.returns = endpoint.handler.Returns()
 
-	for _, param := range endpoint.handler.Params() {
-		// Context param is a specific one and should not be treated as a request parameter
-		if param.Type().IsContext() {
-			continue
-		}
-
+	for i, param := range endpoint.handler.Params() {
 		endpointParam := &Param{
 			name: param.Name(),
 			decl: param,
+		}
+
+		// Context param is a specific one and should not be treated as a request parameter
+		if param.Type().IsContext() {
+			endpoint.params[i] = endpointParam
+			continue
 		}
 
 		// Determine the origin of a parameter by checking if its name match a path parameter
@@ -107,17 +115,7 @@ func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint
 			endpointParam.src = FromBody
 		}
 
-		endpoint.params = append(endpoint.params, endpointParam)
-	}
-
-	for _, ret := range endpoint.handler.Returns() {
-		if ret.Type().IsError() {
-			continue
-		}
-
-		// The first non builtin return type will be considered as the response type
-		endpoint.returns = ret
-		break
+		endpoint.params[i] = endpointParam
 	}
 
 	return endpoint, nil

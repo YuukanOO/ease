@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"sync"
@@ -41,8 +42,14 @@ func (f *Func) Returns() []*Var {
 	return f.returns
 }
 
-func (f *Func) IsExported() bool { return token.IsExported(f.name) }
-func (f *Func) String() string   { return fullyQualifiedName(f.pkg, f.name) }
+func (f *Func) IsExported() bool  { return token.IsExported(f.name) }
+func (f *Func) Package() *Package { return f.pkg }
+func (f *Func) String() string    { return fullyQualifiedName(f.pkg, f.name) }
+
+// Returns a string representing the type declaration prefixed with the package alias.
+func (f *Func) Declaration() string {
+	return fmt.Sprintf("%s.%s", f.pkg.Alias(), f.Name())
+}
 
 func (f *Func) parse() {
 	f.lazy.Do(func() {
@@ -54,19 +61,19 @@ func (f *Func) parse() {
 		// Process function parameters
 		if f.decl.Type.Params.List != nil {
 			f.params = make([]*Var, len(f.decl.Type.Params.List))
-		}
 
-		for i, field := range f.decl.Type.Params.List {
-			f.params[i] = f.file.parseField(field)
+			for i, field := range f.decl.Type.Params.List {
+				f.params[i] = f.file.parseField(field)
+			}
 		}
 
 		// Process function results
 		if f.decl.Type.Results != nil {
 			f.returns = make([]*Var, len(f.decl.Type.Results.List))
-		}
 
-		for i, field := range f.decl.Type.Results.List {
-			f.returns[i] = f.file.parseField(field)
+			for i, field := range f.decl.Type.Results.List {
+				f.returns[i] = f.file.parseField(field)
+			}
 		}
 	})
 }

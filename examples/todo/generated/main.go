@@ -3,26 +3,65 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"strconv"
+	todo_ca76 "github.com/YuukanOO/ease/todo"
 )
 
 type server struct {
 	router *gin.Engine
+	todoservice_9abf *todo_ca76.TodoService
 }
 
 func main() {
 	s := &server{
 		router: gin.Default(),
 	}
-
-	
 	// POST /api/todos
-	
 	// GET /api/todos
-	
-	// PUT /api/todos/:id
-	
 	// GET /api/_health
-	
+	// PUT /api/todos/:id
 
 	s.router.Run()
+}
+func (s *server) Create(c *gin.Context) {
+	var ctx context_ea77.Context = c.Request.Context()
+	var cmd todo_ca76.TodoCreateCommand
+	
+	s.todoservice_9abf.Create(
+		ctx,
+		cmd,
+	)
+}
+
+func (s *server) List(c *gin.Context) {
+	var ctx context_ea77.Context = c.Request.Context()
+	
+	s.todoservice_9abf.List(
+		ctx,
+	)
+}
+
+func (s *server) HealthCheck(c *gin.Context) {
+	var ctx context_ea77.Context = c.Request.Context()
+	
+	todo_ca76.HealthCheck(
+		ctx,
+	)
+}
+
+func (s *server) Update(c *gin.Context) {
+	var ctx context_ea77.Context = c.Request.Context()
+	var id uint = paramToInt[uint](c, "id")
+	var cmd todo_ca76.TodoUpdateCommand
+	
+	s.todoservice_9abf.Update(
+		ctx,
+		id,
+		cmd,
+	)
+}
+
+func paramToInt[T int | uint](c *gin.Context, name string) T {
+	value, _ := strconv.Atoi(c.Param(name))
+	return T(value)
 }

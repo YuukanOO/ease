@@ -10,7 +10,7 @@ type (
 	// Parser used to process packages names and extract information from them.
 	Parser interface {
 		// Parse given package names.
-		Parse(packageNames ...string) error
+		Parse(packageNames ...string) (Result, error)
 	}
 
 	Extension interface {
@@ -19,7 +19,6 @@ type (
 
 	parser struct {
 		extensions []Extension
-		result     *result
 	}
 )
 
@@ -30,7 +29,7 @@ func New(extensions ...Extension) Parser {
 	}
 }
 
-func (p *parser) Parse(packageNames ...string) error {
+func (p *parser) Parse(packageNames ...string) (Result, error) {
 	fset := token.NewFileSet()
 	pkgs, err := packages.Load(&packages.Config{
 		Fset: fset,
@@ -38,26 +37,26 @@ func (p *parser) Parse(packageNames ...string) error {
 	}, packageNames...)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	p.result = newResult()
+	result := newResult()
 
 	// And process each package files
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
-			if err = p.result.ParseFile(pkg.PkgPath, file); err != nil {
-				return err
+			if err = result.ParseFile(pkg.PkgPath, file); err != nil {
+				return nil, err
 			}
 		}
 	}
 
 	// And finally, visit each extension
 	for _, extension := range p.extensions {
-		if err = extension.Visit(p.result); err != nil {
-			return err
+		if err = extension.Visit(result); err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return result, nil
 }
