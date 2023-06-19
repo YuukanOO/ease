@@ -15,10 +15,8 @@ const (
 
 type Var struct {
 	*Decl
-	name       string
 	kind       VarKind
 	underlying *Type
 }
 
-func (v *Var) Name() string { return v.name }
-func (v *Var) Type() *Type  { return v.underlying }
+func (v *Var) Type() *Type { return v.underlying }

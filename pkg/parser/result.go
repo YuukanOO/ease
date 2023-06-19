@@ -8,25 +8,57 @@ import (
 	"github.com/YuukanOO/ease/pkg/flag"
 )
 
-// Result of the parsing operation for a multitude of packages.
-type Result struct {
-	mu    sync.Mutex
-	pkgs  map[string]*Package
-	types map[string]*Type
-	funcs map[string]*Func
-}
+type (
+	Result interface {
+		Packages() map[string]*Package
+		Types() map[string]*Type
+		Funcs() map[string]*Func
+	}
 
-func newResult() *Result {
-	return &Result{
+	// result of the parsing operation for a multitude of packages.
+	result struct {
+		mu    sync.Mutex
+		pkgs  map[string]*Package
+		types map[string]*Type
+		funcs map[string]*Func
+	}
+)
+
+func newResult() *result {
+	return &result{
 		pkgs:  make(map[string]*Package),
 		types: make(map[string]*Type),
 		funcs: make(map[string]*Func),
 	}
 }
 
+func (r *result) Packages() map[string]*Package { return r.pkgs }
+func (r *result) Types() map[string]*Type       { return r.types }
+func (r *result) Funcs() map[string]*Func       { return r.funcs }
+
+// Register the given function declaration.
+func (r *result) RegisterFunc(at *FileResult, decl *ast.FuncDecl) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	fn := newFunc(at, decl)
+
+	r.funcs[fn.String()] = fn
+}
+
+// Register the given type declaration.
+func (r *result) RegisterType(at *FileResult, decl *ast.TypeSpec, comment *ast.CommentGroup) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	typ := newTypeFromDeclaration(at, decl, comment)
+
+	r.types[typ.String()] = typ
+}
+
 // Package returns the package with the given path if it exists or creates
 // it if it doesn't.
-func (r *Result) Package(path string) *Package {
+func (r *result) Package(path string) *Package {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -43,31 +75,8 @@ func (r *Result) Package(path string) *Package {
 	return pkg
 }
 
-// Returns the function behind the ident if it exists or creates it if it doesn't.
-func (r *Result) Func(pkg *Package, ident *ast.Ident, comments ...*ast.CommentGroup) *Func {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	fqn := fullyQualifiedName(pkg, ident.Name)
-	fn, found := r.funcs[fqn]
-
-	if found {
-		return fn
-	}
-
-	fn = &Func{
-		Decl: declFromComments(comments...),
-		pkg:  pkg,
-		name: ident.Name,
-	}
-
-	r.funcs[fqn] = fn
-
-	return fn
-}
-
 // Returns the type behind the ident if it exists or creates it if it doesn't.
-func (r *Result) Type(pkg *Package, ident *ast.Ident, comments ...*ast.CommentGroup) *Type {
+func (r *result) Type(pkg *Package, ident *ast.Ident) *Type {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -80,10 +89,11 @@ func (r *Result) Type(pkg *Package, ident *ast.Ident, comments ...*ast.CommentGr
 	typ, found := r.types[fqn]
 
 	if found {
-		return typ.DefinedBy(ident.Obj, comments...)
+		return typ
 	}
 
-	typ = newType(pkg, ident, comments...)
+	typ = newType(pkg, ident)
+
 	r.types[fqn] = typ
 
 	return typ
@@ -95,14 +105,14 @@ type (
 
 	// Result scoped to a specific ast File.
 	FileResult struct {
-		parent  *Result
+		parent  *result
 		pkg     *Package
 		imports ImportsMap
 	}
 )
 
 // Build a FileResult scoped to the given package/ast file.
-func (r *Result) ParseFile(pkgPath string, file *ast.File) error {
+func (r *result) ParseFile(pkgPath string, file *ast.File) error {
 	fileResult := &FileResult{
 		parent:  r,
 		pkg:     r.Package(pkgPath),
@@ -110,7 +120,7 @@ func (r *Result) ParseFile(pkgPath string, file *ast.File) error {
 	}
 
 	for _, decl := range file.Decls {
-		if err := fileResult.parseDeclaration(decl); err != nil {
+		if err := fileResult.visitDeclaration(decl); err != nil {
 			return err
 		}
 	}
@@ -119,7 +129,7 @@ func (r *Result) ParseFile(pkgPath string, file *ast.File) error {
 }
 
 // Builds a new mapping between package name/alias and package path from a raw ImportSpec array.
-func (r *Result) ImportsMap(imports []*ast.ImportSpec) ImportsMap {
+func (r *result) ImportsMap(imports []*ast.ImportSpec) ImportsMap {
 	im := make(ImportsMap, len(imports))
 
 	for _, i := range imports {
@@ -134,72 +144,34 @@ func (r *Result) ImportsMap(imports []*ast.ImportSpec) ImportsMap {
 	return im
 }
 
-func (r *FileResult) parseDeclaration(decl ast.Decl) error {
+func (r *FileResult) visitDeclaration(decl ast.Decl) error {
 	switch d := decl.(type) {
 	case *ast.GenDecl:
 		for _, spec := range d.Specs {
-			if err := r.parseSpec(spec, d.Doc); err != nil {
-				return err
+			switch s := spec.(type) {
+			case *ast.TypeSpec:
+				// Only handle types declarations for now
+				r.parent.RegisterType(r, s, d.Doc)
 			}
 		}
 	case *ast.FuncDecl:
-		return r.parseFunc(d)
+		r.parent.RegisterFunc(r, d)
 	}
 
 	return nil
 }
 
-func (r *FileResult) parseSpec(spec ast.Spec, comments ...*ast.CommentGroup) error {
-	switch s := spec.(type) {
-	case *ast.TypeSpec:
-		// Only handle types for now
-		r.parent.Type(r.pkg, s.Name, comments...)
-	case *ast.ValueSpec, *ast.ImportSpec:
-		return nil
-	}
-
-	return nil
-}
-
-func (r *FileResult) parseFunc(decl *ast.FuncDecl) error {
-	fn := r.parent.Func(r.pkg, decl.Name, decl.Doc)
-
-	// Process receiver field
-	if decl.Recv != nil {
-		fn.recv = r.parseField(decl.Recv.List[0])
-	}
-
-	// Process function parameters
-	if decl.Type.Params.List != nil {
-		fn.params = make([]*Var, len(decl.Type.Params.List))
-	}
-
-	for i, field := range decl.Type.Params.List {
-		fn.params[i] = r.parseField(field)
-	}
-
-	// Process function results
-	if decl.Type.Results != nil {
-		fn.returns = make([]*Var, len(decl.Type.Results.List))
-	}
-
-	for i, field := range decl.Type.Results.List {
-		fn.returns[i] = r.parseField(field)
-	}
-
-	return nil
-}
-
+// Parse a single field and returns a Var. It is defined on a scoped FileResult
+// object because the import mapping is required to correctly resolve a type.
 func (r *FileResult) parseField(field *ast.Field) *Var {
-	var name string
+	var name *ast.Ident
 
 	if len(field.Names) > 0 {
-		name = field.Names[0].Name
+		name = field.Names[0]
 	}
 
 	v := &Var{
-		Decl: declFromComments(field.Doc, field.Comment),
-		name: name,
+		Decl: newDeclaration(name, field.Doc, field.Comment),
 	}
 
 	v.underlying, v.kind = r.parseType(field.Type, r.pkg, VarKindUnknown)

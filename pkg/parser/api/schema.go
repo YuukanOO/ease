@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/YuukanOO/ease/pkg/parser"
 )
@@ -19,6 +20,11 @@ const (
 	MethodDelete  Method = "DELETE"
 )
 
+const (
+	methodDirectiveParam = "method"
+	pathDirectiveParam   = "path"
+)
+
 type (
 	API struct {
 		title       string
@@ -29,7 +35,6 @@ type (
 	// Represents a single endpoint parsed from the API directive and function declaration.
 	Endpoint struct {
 		handler *parser.Func // Endpoint handler function
-
 		method  Method
 		path    string
 		params  []*Param
@@ -46,81 +51,90 @@ type (
 	ParamFrom uint   // Where the parameter is coming from
 )
 
-func (e *Endpoint) String() string { return fmt.Sprintf("%s %s", e.method, e.path) }
+func (s *API) Title() string          { return s.title }
+func (s *API) Description() string    { return s.description }
+func (s *API) Endpoints() []*Endpoint { return s.endpoints }
 
-// func parseEndpoint(directive *parser.Directive, resolver parser.TypeResolver, decl *ast.FuncDecl) (*Endpoint, error) {
-// 	endpoint := &Endpoint{}
+func (e *Endpoint) String() string        { return fmt.Sprintf("%s %s", e.method, e.path) }
+func (e *Endpoint) Handler() *parser.Func { return e.handler }
+func (e *Endpoint) Method() Method        { return e.method }
+func (e *Endpoint) Path() string          { return e.path }
+func (e *Endpoint) Params() []*Param      { return e.params }
+func (e *Endpoint) Returns() *parser.Var  { return e.returns }
 
-// 	for name, value := range directive.Params {
-// 		switch name {
-// 		case methodDirectiveParam:
-// 			m, err := parseMethod(value)
+func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint, error) {
+	endpoint := &Endpoint{}
 
-// 			if err != nil {
-// 				return nil, err
-// 			}
+	for name, value := range directive.Params {
+		switch name {
+		case methodDirectiveParam:
+			m, err := parseMethod(value)
 
-// 			endpoint.method = m
-// 		case pathDirectiveParam:
-// 			endpoint.path = value
-// 		}
-// 	}
+			if err != nil {
+				return nil, err
+			}
 
-// 	if endpoint.path == "" {
-// 		return nil, ErrInvalidPath
-// 	}
+			endpoint.method = m
+		case pathDirectiveParam:
+			endpoint.path = value
+		}
+	}
 
-// 	endpoint.handler = resolver.Func(decl)
+	if endpoint.path == "" {
+		return nil, ErrInvalidPath
+	}
 
-// 	for _, param := range endpoint.handler.Params() {
-// 		// Context param is a specific one and should not be treated as a request parameter
-// 		if param.Type().IsContext() {
-// 			continue
-// 		}
+	endpoint.handler = handler
 
-// 		endpointParam := &Param{
-// 			name: param.Name(),
-// 			decl: param,
-// 		}
+	for _, param := range endpoint.handler.Params() {
+		// Context param is a specific one and should not be treated as a request parameter
+		if param.Type().IsContext() {
+			continue
+		}
 
-// 		// Determine the origin of a parameter by checking if its name match a path parameter
-// 		// FIXME: maybe we could use a better way to check it
-// 		if strings.Contains(endpoint.path, ":"+param.Name()) {
-// 			endpointParam.src = FromPath
-// 		} else if endpoint.method == MethodGet {
-// 			endpointParam.src = FromQuery
-// 		} else {
-// 			endpointParam.src = FromBody
-// 		}
+		endpointParam := &Param{
+			name: param.Name(),
+			decl: param,
+		}
 
-// 		endpoint.params = append(endpoint.params, endpointParam)
-// 	}
+		// Determine the origin of a parameter by checking if its name match a path parameter
+		// FIXME: maybe we could use a better way to check it
+		if strings.Contains(endpoint.path, ":"+param.Name()) {
+			endpointParam.src = FromPath
+		} else if endpoint.method == MethodGet {
+			endpointParam.src = FromQuery
+		} else {
+			endpointParam.src = FromBody
+		}
 
-// 	for _, ret := range endpoint.handler.Returns() {
-// 		if ret.Type().IsError() {
-// 			continue
-// 		}
+		endpoint.params = append(endpoint.params, endpointParam)
+	}
 
-// 		// The first non builtin return type will be considered as the response type
-// 		endpoint.returns = ret
-// 		break
-// 	}
+	for _, ret := range endpoint.handler.Returns() {
+		if ret.Type().IsError() {
+			continue
+		}
 
-// 	return endpoint, nil
-// }
+		// The first non builtin return type will be considered as the response type
+		endpoint.returns = ret
+		break
+	}
 
-// func parseMethod(value string) (Method, error) {
-// 	switch Method(value) {
-// 	case MethodOptions,
-// 		MethodGet,
-// 		MethodPost,
-// 		MethodPatch,
-// 		MethodPut,
-// 		MethodDelete:
-// 		return Method(value), nil
-// 	case "": // Default to GET if not specified.
-// 		return MethodGet, nil
-// 	default:
-// 		return "", ErrInvalidMethod
-// 	}
-// }
+	return endpoint, nil
+}
+
+func parseMethod(value string) (Method, error) {
+	switch Method(value) {
+	case MethodOptions,
+		MethodGet,
+		MethodPost,
+		MethodPatch,
+		MethodPut,
+		MethodDelete:
+		return Method(value), nil
+	case "": // Default to GET if not specified.
+		return MethodGet, nil
+	default:
+		return "", ErrInvalidMethod
+	}
+}

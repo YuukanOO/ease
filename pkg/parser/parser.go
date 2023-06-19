@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"go/ast"
 	"go/token"
 
 	"golang.org/x/tools/go/packages"
@@ -15,24 +14,23 @@ type (
 	}
 
 	Extension interface {
-		// Visit the given file and look for extension related informations.
-		Visit(*ast.File) error
+		Visit(Result) error
 	}
 
-	parserImpl struct {
+	parser struct {
 		extensions []Extension
-		result     *Result
+		result     *result
 	}
 )
 
 // New creates a new Parser.
 func New(extensions ...Extension) Parser {
-	return &parserImpl{
+	return &parser{
 		extensions: extensions,
 	}
 }
 
-func (p *parserImpl) Parse(packageNames ...string) error {
+func (p *parser) Parse(packageNames ...string) error {
 	fset := token.NewFileSet()
 	pkgs, err := packages.Load(&packages.Config{
 		Fset: fset,
@@ -51,6 +49,13 @@ func (p *parserImpl) Parse(packageNames ...string) error {
 			if err = p.result.ParseFile(pkg.PkgPath, file); err != nil {
 				return err
 			}
+		}
+	}
+
+	// And finally, visit each extension
+	for _, extension := range p.extensions {
+		if err = extension.Visit(p.result); err != nil {
+			return err
 		}
 	}
 

@@ -77,6 +77,7 @@ func (s *TodoService) Update(ctx contextalias.Context, id uint, cmd TodoUpdateCo
 }
 
 // Gets the server health
+// Just returns "ok" for now.
 //
 //ease:api method=GET path=/api/_health
 func HealthCheck(ctx contextalias.Context) (string, error) {

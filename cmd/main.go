@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
+	"github.com/YuukanOO/ease/pkg/generator"
+	"github.com/YuukanOO/ease/pkg/generator/ginhttp"
 	"github.com/YuukanOO/ease/pkg/parser"
 	"github.com/YuukanOO/ease/pkg/parser/api"
 )
@@ -26,7 +27,7 @@ func main() {
 		panic(err)
 	}
 
-	schema := apiParser.Schema()
-
-	fmt.Println(schema)
+	if err := generator.New(ginhttp.New(apiParser.Schema())).Generate(); err != nil {
+		panic(err)
+	}
 }

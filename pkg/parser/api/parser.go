@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"go/ast"
 
 	"github.com/YuukanOO/ease/pkg/parser"
 )
@@ -23,11 +22,7 @@ type (
 	}
 )
 
-const (
-	apiDirective         = "api"
-	methodDirectiveParam = "method"
-	pathDirectiveParam   = "path"
-)
+const apiDirective = "api"
 
 // Builds a new API parser to process files and extract an API schema.
 func New() Extension {
@@ -39,27 +34,26 @@ func New() Extension {
 // Returns the API schema that was build by the parser.
 func (p *apiParser) Schema() *API { return p.schema }
 
-func (p *apiParser) Visit(file *ast.File) error {
-	// for _, decl := range file.Decls {
-	// 	decl, isFunc := decl.(*ast.FuncDecl)
+func (p *apiParser) Visit(result parser.Result) error {
+	for _, fn := range result.Funcs() {
+		if !fn.IsExported() {
+			continue
+		}
 
-	// 	if !isFunc || !decl.Name.IsExported() {
-	// 		continue
-	// 	}
+		api, hasApiDirective := fn.Directive(apiDirective)
 
-	// 	for _, directive := range parser.ParseDirectives(decl.Doc, apiDirective) {
-	// 		switch directive.Name {
-	// 		case apiDirective:
-	// 			endpoint, err := parseEndpoint(directive, resolver, decl)
+		if !hasApiDirective {
+			continue
+		}
 
-	// 			if err != nil {
-	// 				return err
-	// 			}
+		endpoint, err := parseEndpoint(api, fn)
 
-	// 			p.schema.endpoints = append(p.schema.endpoints, endpoint)
-	// 		}
-	// 	}
-	// }
+		if err != nil {
+			return err
+		}
+
+		p.schema.endpoints = append(p.schema.endpoints, endpoint)
+	}
 
 	return nil
 }
