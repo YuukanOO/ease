@@ -2,6 +2,7 @@ package parser
 
 import "strings"
 
+// Represents a single package and act as a registry of declarations for easy parsing.
 type Package struct {
 	name string
 	path string

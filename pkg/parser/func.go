@@ -1,6 +1,7 @@
 package parser
 
 type Func struct {
+	*Decl
 	pkg     *Package
 	name    string
 	recv    *Var

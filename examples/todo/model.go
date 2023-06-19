@@ -1,6 +1,7 @@
 package todo
 
 // Represents a Todo item.
+// ease:configuration
 type Todo struct {
 	// Id of the todo item
 	ID        uint   `json:"id"`

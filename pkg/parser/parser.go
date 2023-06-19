@@ -16,12 +16,12 @@ type (
 
 	Extension interface {
 		// Visit the given file and look for extension related informations.
-		Visit(TypeResolver, *ast.File) error
+		Visit(*ast.File) error
 	}
 
 	parserImpl struct {
 		extensions []Extension
-		resolver   *typeResolver
+		result     *Result
 	}
 )
 
@@ -29,7 +29,6 @@ type (
 func New(extensions ...Extension) Parser {
 	return &parserImpl{
 		extensions: extensions,
-		resolver:   NewTypeResolver(),
 	}
 }
 
@@ -44,15 +43,13 @@ func (p *parserImpl) Parse(packageNames ...string) error {
 		return err
 	}
 
+	p.result = newResult()
+
 	// And process each package files
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
-			scopedResolver := p.resolver.Scope(pkg.PkgPath, file)
-
-			for _, ext := range p.extensions {
-				if err := ext.Visit(scopedResolver, file); err != nil {
-					return err
-				}
+			if err = p.result.ParseFile(pkg.PkgPath, file); err != nil {
+				return err
 			}
 		}
 	}

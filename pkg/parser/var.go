@@ -14,6 +14,7 @@ const (
 )
 
 type Var struct {
+	*Decl
 	name       string
 	kind       VarKind
 	underlying *Type

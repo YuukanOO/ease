@@ -1,3 +1,4 @@
+// Simple package to test out ease capabilities.
 package todo
 
 //go:generate go run github.com/YuukanOO/ease/cmd github.com/YuukanOO/ease/todo...
@@ -13,10 +14,14 @@ var a = template.Must(template.New("").Parse(""))
 
 var ErrNotFound = errors.New("not found")
 
-type TodoService struct {
-	todos []*Todo
-	mu    sync.Mutex
-}
+type (
+	SomeInterface interface{}
+
+	TodoService struct {
+		todos []*Todo
+		mu    sync.Mutex
+	}
+)
 
 // Builds up a new TodoService.
 func NewTodoService() *TodoService {

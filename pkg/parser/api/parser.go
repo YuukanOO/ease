@@ -39,27 +39,27 @@ func New() Extension {
 // Returns the API schema that was build by the parser.
 func (p *apiParser) Schema() *API { return p.schema }
 
-func (p *apiParser) Visit(resolver parser.TypeResolver, file *ast.File) error {
-	for _, decl := range file.Decls {
-		decl, isFunc := decl.(*ast.FuncDecl)
+func (p *apiParser) Visit(file *ast.File) error {
+	// for _, decl := range file.Decls {
+	// 	decl, isFunc := decl.(*ast.FuncDecl)
 
-		if !isFunc || !decl.Name.IsExported() {
-			continue
-		}
+	// 	if !isFunc || !decl.Name.IsExported() {
+	// 		continue
+	// 	}
 
-		for _, directive := range parser.ParseDirectives(decl.Doc, apiDirective) {
-			switch directive.Name {
-			case apiDirective:
-				endpoint, err := parseEndpoint(directive, resolver, decl)
+	// 	for _, directive := range parser.ParseDirectives(decl.Doc, apiDirective) {
+	// 		switch directive.Name {
+	// 		case apiDirective:
+	// 			endpoint, err := parseEndpoint(directive, resolver, decl)
 
-				if err != nil {
-					return err
-				}
+	// 			if err != nil {
+	// 				return err
+	// 			}
 
-				p.schema.endpoints = append(p.schema.endpoints, endpoint)
-			}
-		}
-	}
+	// 			p.schema.endpoints = append(p.schema.endpoints, endpoint)
+	// 		}
+	// 	}
+	// }
 
 	return nil
 }
