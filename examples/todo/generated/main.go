@@ -29,47 +29,76 @@ func main() {
 func (s *server) Create_9e7e22(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
 	var cmd todo_ca7678.TodoCreateCommand
-
-	s.TodoService_9abf69.Create(
+	ginResult, err := s.TodoService_9abf69.Create(
 		ctx,
 		&cmd,
 	)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(200, ginResult)
 }
 
 func (s *server) List_765091(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
-
-	s.TodoService_9abf69.List(
+	ginResult, err := s.TodoService_9abf69.List(
 		ctx,
 	)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(200, ginResult)
 }
 
 func (s *server) Update_0cdc62(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
 	var id uint = paramToInt[uint](c, "id")
 	var cmd todo_ca7678.TodoUpdateCommand
-
-	s.TodoService_9abf69.Update(
+	ginResult, err := s.TodoService_9abf69.Update(
 		ctx,
 		id,
 		cmd,
 	)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(200, ginResult)
 }
 
 func (s *server) HealthCheck_06868b(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
-
-	todo_ca7678.HealthCheck(
+	ginResult := todo_ca7678.HealthCheck(
 		ctx,
 	)
+	c.JSON(200, ginResult)
 }
 
 func (s *server) WithoutParams_5fd7e9(c *gin.Context) {
-
 	s.TodoService_9abf69.WithoutParams()
 }
 
 func paramToInt[T int | uint](c *gin.Context, name string) T {
 	value, _ := strconv.Atoi(c.Param(name))
 	return T(value)
+}
+
+type HttpError interface {
+	error
+	Status() int
+}
+
+func handleError(c *gin.Context, err error) {
+	c.Error(err)
+
+	httpErr, implementHttpErr := err.(HttpError)
+
+	if !implementHttpErr {
+		c.JSON(500, err)
+		return
+	}
+
+	c.JSON(httpErr.Status(), err)
 }

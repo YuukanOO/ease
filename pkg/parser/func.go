@@ -5,16 +5,20 @@ import (
 	"sync"
 )
 
-type Func struct {
-	*Decl
-	lazy    sync.Once
-	file    *FileResult
-	decl    *ast.FuncDecl
-	pkg     *Package
-	recv    *Var
-	params  []*Var
-	returns []*Var
-}
+type (
+	Vars []*Var
+
+	Func struct {
+		*Decl
+		lazy    sync.Once
+		file    *FileResult
+		decl    *ast.FuncDecl
+		pkg     *Package
+		recv    *Var
+		params  Vars
+		returns Vars
+	}
+)
 
 func newFunc(at *FileResult, decl *ast.FuncDecl) *Func {
 	return &Func{
@@ -30,12 +34,12 @@ func (f *Func) Recv() *Var {
 	return f.recv
 }
 
-func (f *Func) Params() []*Var {
+func (f *Func) Params() Vars {
 	f.parse()
 	return f.params
 }
 
-func (f *Func) Returns() []*Var {
+func (f *Func) Returns() Vars {
 	f.parse()
 	return f.returns
 }
@@ -52,7 +56,7 @@ func (f *Func) parse() {
 
 		// Process function parameters
 		if f.decl.Type.Params.List != nil {
-			f.params = make([]*Var, len(f.decl.Type.Params.List))
+			f.params = make(Vars, len(f.decl.Type.Params.List))
 
 			for i, field := range f.decl.Type.Params.List {
 				f.params[i] = f.file.parseField(field)
@@ -61,11 +65,22 @@ func (f *Func) parse() {
 
 		// Process function results
 		if f.decl.Type.Results != nil {
-			f.returns = make([]*Var, len(f.decl.Type.Results.List))
+			f.returns = make(Vars, len(f.decl.Type.Results.List))
 
 			for i, field := range f.decl.Type.Results.List {
 				f.returns[i] = f.file.parseField(field)
 			}
 		}
 	})
+}
+
+// Checks wether or not this function returns an error.
+func (v Vars) HasError() bool {
+	for _, v := range v {
+		if v.Type().IsError() {
+			return true
+		}
+	}
+
+	return false
 }

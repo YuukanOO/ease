@@ -2,19 +2,21 @@ package collection
 
 import "sync"
 
-// Represents an array without duplicates.
+// Represents a unique set of objects.
 type Set[T any] struct {
 	mu      sync.Mutex
 	items   []T
 	indexes map[string]int
 }
 
+// Builds an empty set.
 func NewSet[T any]() *Set[T] {
 	return &Set[T]{
 		indexes: make(map[string]int),
 	}
 }
 
+// Set the given item for the given key if it does not exist. Returns the item.
 func (s *Set[T]) Set(key string, item T) T {
 	if idx, found := s.indexes[key]; found {
 		return s.items[idx]

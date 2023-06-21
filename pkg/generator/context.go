@@ -26,7 +26,7 @@ type (
 
 		FuncDeclaration(*parser.Func) string // Generates a function declaration
 		TypeDeclaration(*parser.Type) string // Generates a field declaration
-		Identifier(string, string) string    // Generates a unique identifier for the second string, the first one is used as a prefix
+		Identifier(string, string) string    // Generates a unique identifier for the second string, the first one is used as a prefix, this is useful to avoid name conflicts
 
 		// Generation helpers
 
@@ -50,9 +50,9 @@ func newContext(dir string, result parser.Result) Context {
 	}
 }
 
-func (c *context) Identifier(name string, path string) string {
-	return c.identifiers.SetLazy(path, func() string {
-		return fmt.Sprintf("%s_%s", name, crypto.Prefix(path, identifierPrefixLength))
+func (c *context) Identifier(prefix string, key string) string {
+	return c.identifiers.SetLazy(key, func() string {
+		return fmt.Sprintf("%s_%s", prefix, crypto.Prefix(key, identifierPrefixLength))
 	})
 }
 

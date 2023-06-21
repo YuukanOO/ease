@@ -28,6 +28,8 @@ func main() {
 	s.router.Run()
 }
 {{ range .Schema.Endpoints }}
+{{ $hasError := .Handler.Returns.HasError -}}
+{{- $hasReturn := or (and (eq $hasError false) (gt (len .Handler.Returns) 0)) (and (eq $hasError true) (gt (len .Handler.Returns) 1)) -}}
 func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context) {
 	{{- range .Params }}
 	var {{ .Name }} {{ $.TypeDeclaration .Decl.Type }}
@@ -36,9 +38,15 @@ func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 	{{- end }}
 
 	{{- end }}
-	{{ if .Handler.Recv }}
+	{{- if .Handler.Returns }}
+	{{ range $idx, $ret := .Handler.Returns -}}
+	{{ if ne $idx 0 }}, {{ end }}{{ if $ret.Type.IsError }}err{{ else if eq $idx 0 }}ginResult{{ else }}_{{ end }}
+	{{- end -}}
+	:=
+	{{- end -}}
+	{{- if .Handler.Recv -}}
 	s.{{ $.Identifier .Handler.Recv.Type.Name .Handler.Recv.Type.String }}.{{ .Handler.Name }}
-	{{- else }}
+	{{- else -}}
 	{{ $.FuncDeclaration .Handler }}
 	{{- end -}}
 	(
@@ -46,9 +54,36 @@ func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 		{{ if .Decl.IsPointer }}&{{ end }}{{ .Name }},
 	{{- end }}
 	)
+	{{- if $hasError }}
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	{{- end }}
+	{{- if $hasReturn }}
+	c.JSON(200, ginResult)
+	{{- end }}
 }
 {{ end }}
 func paramToInt[T int | uint](c *gin.Context, name string) T {
 	value, _ := strconv.Atoi(c.Param(name))
 	return T(value)
+}
+
+type HttpError interface {
+	error
+	Status() int
+}
+
+func handleError(c *gin.Context, err error) {
+	c.Error(err)
+
+	httpErr, implementHttpErr := err.(HttpError)
+
+	if !implementHttpErr {
+		c.JSON(500, err)
+		return
+	}
+
+	c.JSON(httpErr.Status(), err)
 }
