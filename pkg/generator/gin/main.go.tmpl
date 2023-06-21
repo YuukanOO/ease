@@ -28,8 +28,6 @@ func main() {
 	s.router.Run()
 }
 {{ range .Schema.Endpoints }}
-{{ $hasError := .Handler.Returns.HasError -}}
-{{- $hasReturn := or (and (eq $hasError false) (gt (len .Handler.Returns) 0)) (and (eq $hasError true) (gt (len .Handler.Returns) 1)) -}}
 func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context) {
 	{{- range .Params }}
 	var {{ .Name }} {{ $.TypeDeclaration .Decl.Type }}
@@ -54,13 +52,13 @@ func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 		{{ if .Decl.IsPointer }}&{{ end }}{{ .Name }},
 	{{- end }}
 	)
-	{{- if $hasError }}
+	{{- if .Handler.Returns.HasError }}
 	if err != nil {
 		handleError(c, err)
 		return
 	}
 	{{- end }}
-	{{- if $hasReturn }}
+	{{- if .Returns }}
 	c.JSON(200, ginResult)
 	{{- end }}
 }
