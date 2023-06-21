@@ -4,15 +4,15 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"strconv"
-	{{- range $name, $pkg := .Imports }}
-	{{ $pkg.Alias }} "{{ $pkg.Path }}"
+	{{- range .Imports.Items }}
+	{{ $.Identifier .Name .Path }} "{{ .Path }}"
 	{{- end }}
 )
 
 type server struct {
 	router *gin.Engine
-	{{- range $name, $typ := .Fields }}
-	{{ $typ.Alias }} *{{ $typ.Declaration }}
+	{{- range .Fields.Items }}
+	{{ $.Identifier .Name .String }} *{{ $.TypeDeclaration . }}
 	{{- end }}
 }
 
@@ -22,28 +22,28 @@ func main() {
 	}
 
 	{{- range .Schema.Endpoints }}
-	// {{ .String }}
+	s.router.{{ .Method }}("{{ .Path }}", s.{{ $.Identifier .Handler.Name .Handler.String }})
 	{{- end }}
 
 	s.router.Run()
 }
-
-{{- range .Schema.Endpoints }}
-func (s *server) {{ .Handler.Name }}(c *gin.Context) {
+{{ range .Schema.Endpoints }}
+func (s *server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context) {
 	{{- range .Params }}
-	var {{ .Name }} {{ .Decl.Type.Declaration }}
+	var {{ .Name }} {{ $.TypeDeclaration .Decl.Type }}
 	{{- if .Decl.Type.IsContext }} = c.Request.Context()
-	{{- else if eq .Src 1 }} = {{ if not (eq .Decl.Type.Name "string") }}paramToInt[{{ .Decl.Type.Name }}](c, "{{ .Name }}"){{ else }} c.Param("{{ .Name }}"){{ end }}
+	{{- else if eq .Src 1 }} = {{ if ne .Decl.Type.Name "string" }}paramToInt[{{ .Decl.Type.Name }}](c, "{{ .Name }}"){{ else }} c.Param("{{ .Name }}"){{ end }}
 	{{- end }}
+
 	{{- end }}
 	{{ if .Handler.Recv }}
-	s.{{ .Handler.Recv.Type.Alias }}.{{ .Handler.Name }}
+	s.{{ $.Identifier .Handler.Recv.Type.Name .Handler.Recv.Type.String }}.{{ .Handler.Name }}
 	{{- else }}
-	{{ .Handler.Declaration }}
+	{{ $.FuncDeclaration .Handler }}
 	{{- end -}}
 	(
 	{{- range .Params}}
-		{{ .Name }},
+		{{ if .Decl.IsPointer }}&{{ end }}{{ .Name }},
 	{{- end }}
 	)
 }

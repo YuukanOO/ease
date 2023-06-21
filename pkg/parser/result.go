@@ -3,100 +3,74 @@ package parser
 import (
 	"go/ast"
 	"strings"
-	"sync"
 
+	"github.com/YuukanOO/ease/pkg/collection"
 	"github.com/YuukanOO/ease/pkg/flag"
 )
 
 type (
 	Result interface {
-		Packages() map[string]*Package
-		Types() map[string]*Type
-		Funcs() map[string]*Func
+		Packages() []*Package
+		Types() []*Type
+		Funcs() []*Func
 	}
 
 	// result of the parsing operation for a multitude of packages.
 	result struct {
-		mu    sync.Mutex
-		pkgs  map[string]*Package
-		types map[string]*Type
-		funcs map[string]*Func
+		pkgs  *collection.Set[*Package]
+		types *collection.Set[*Type]
+		funcs *collection.Set[*Func]
 	}
 )
 
 func newResult() *result {
 	return &result{
-		pkgs:  make(map[string]*Package),
-		types: make(map[string]*Type),
-		funcs: make(map[string]*Func),
+		pkgs:  collection.NewSet[*Package](),
+		types: collection.NewSet[*Type](),
+		funcs: collection.NewSet[*Func](),
 	}
 }
 
-func (r *result) Packages() map[string]*Package { return r.pkgs }
-func (r *result) Types() map[string]*Type       { return r.types }
-func (r *result) Funcs() map[string]*Func       { return r.funcs }
+func (r *result) Packages() []*Package { return r.pkgs.Items() }
+func (r *result) Types() []*Type       { return r.types.Items() }
+func (r *result) Funcs() []*Func       { return r.funcs.Items() }
 
 // Register the given function declaration.
 func (r *result) RegisterFunc(at *FileResult, decl *ast.FuncDecl) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	fn := newFunc(at, decl)
 
-	r.funcs[fn.String()] = fn
+	r.funcs.Set(fn.String(), fn)
 }
 
 // Register the given type declaration.
 func (r *result) RegisterType(at *FileResult, decl *ast.TypeSpec, comment *ast.CommentGroup) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	typ := newTypeFromDeclaration(at, decl, comment)
 
-	r.types[typ.String()] = typ
+	r.types.Set(typ.String(), typ)
 }
 
 // Package returns the package with the given path if it exists or creates
 // it if it doesn't.
 func (r *result) Package(path string) *Package {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	sanitizedPath := strings.Trim(path, "\"")
-	pkg, found := r.pkgs[sanitizedPath]
 
-	if found {
-		return pkg
-	}
-
-	pkg = newPackage(sanitizedPath)
-	r.pkgs[sanitizedPath] = pkg
-
-	return pkg
+	return r.pkgs.SetLazy(sanitizedPath, func() *Package {
+		return newPackage(sanitizedPath)
+	})
 }
 
 // Returns the type behind the ident if it exists or creates it if it doesn't.
 func (r *result) Type(pkg *Package, ident *ast.Ident) *Type {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	// If that's a builtin identifier, just remove the pkg
 	if IsBuiltin(ident.Name) {
 		pkg = nil
 	}
 
 	fqn := fullyQualifiedName(pkg, ident.Name)
-	typ, found := r.types[fqn]
 
-	if found {
-		return typ
-	}
-
-	typ = newType(pkg, ident)
-
-	r.types[fqn] = typ
-
-	return typ
+	return r.types.SetLazy(fqn, func() *Type {
+		return newType(pkg, ident)
+	})
 }
 
 type (

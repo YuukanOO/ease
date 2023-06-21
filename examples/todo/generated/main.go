@@ -2,63 +2,71 @@
 package main
 
 import (
+	context_ea7792 "context"
+	todo_ca7678 "github.com/YuukanOO/ease/todo"
 	"github.com/gin-gonic/gin"
 	"strconv"
-	todo_ca76 "github.com/YuukanOO/ease/todo"
 )
 
 type server struct {
-	router *gin.Engine
-	todoservice_9abf *todo_ca76.TodoService
+	router             *gin.Engine
+	TodoService_9abf69 *todo_ca7678.TodoService
 }
 
 func main() {
 	s := &server{
 		router: gin.Default(),
 	}
-	// POST /api/todos
-	// GET /api/todos
-	// GET /api/_health
-	// PUT /api/todos/:id
+	s.router.POST("/api/todos", s.Create_9e7e22)
+	s.router.GET("/api/todos", s.List_765091)
+	s.router.PUT("/api/todos/:id", s.Update_0cdc62)
+	s.router.GET("/api/_health", s.HealthCheck_06868b)
+	s.router.GET("/api/without-params", s.WithoutParams_5fd7e9)
 
 	s.router.Run()
 }
-func (s *server) Create(c *gin.Context) {
-	var ctx context_ea77.Context = c.Request.Context()
-	var cmd todo_ca76.TodoCreateCommand
-	
-	s.todoservice_9abf.Create(
+
+func (s *server) Create_9e7e22(c *gin.Context) {
+	var ctx context_ea7792.Context = c.Request.Context()
+	var cmd todo_ca7678.TodoCreateCommand
+
+	s.TodoService_9abf69.Create(
 		ctx,
-		cmd,
+		&cmd,
 	)
 }
 
-func (s *server) List(c *gin.Context) {
-	var ctx context_ea77.Context = c.Request.Context()
-	
-	s.todoservice_9abf.List(
-		ctx,
-	)
-}
+func (s *server) List_765091(c *gin.Context) {
+	var ctx context_ea7792.Context = c.Request.Context()
 
-func (s *server) HealthCheck(c *gin.Context) {
-	var ctx context_ea77.Context = c.Request.Context()
-	
-	todo_ca76.HealthCheck(
+	s.TodoService_9abf69.List(
 		ctx,
 	)
 }
 
-func (s *server) Update(c *gin.Context) {
-	var ctx context_ea77.Context = c.Request.Context()
+func (s *server) Update_0cdc62(c *gin.Context) {
+	var ctx context_ea7792.Context = c.Request.Context()
 	var id uint = paramToInt[uint](c, "id")
-	var cmd todo_ca76.TodoUpdateCommand
-	
-	s.todoservice_9abf.Update(
+	var cmd todo_ca7678.TodoUpdateCommand
+
+	s.TodoService_9abf69.Update(
 		ctx,
 		id,
 		cmd,
 	)
+}
+
+func (s *server) HealthCheck_06868b(c *gin.Context) {
+	var ctx context_ea7792.Context = c.Request.Context()
+
+	todo_ca7678.HealthCheck(
+		ctx,
+	)
+}
+
+func (s *server) WithoutParams_5fd7e9(c *gin.Context) {
+
+	s.TodoService_9abf69.WithoutParams()
 }
 
 func paramToInt[T int | uint](c *gin.Context, name string) T {

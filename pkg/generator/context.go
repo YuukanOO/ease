@@ -1,56 +1,102 @@
 package generator
 
 import (
+	"bytes"
+	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 	"text/template"
 
+	"github.com/YuukanOO/ease/pkg/collection"
+	"github.com/YuukanOO/ease/pkg/crypto"
 	"github.com/YuukanOO/ease/pkg/parser"
 )
 
-const defaultPermissions = 0644
+const (
+	defaultPermissions     = 0644
+	identifierPrefixLength = 6
+)
 
 type (
 	Context interface {
 		parser.Result
 
-		EmitTemplate(string, *template.Template, any) error
-		EmitFile(string, []byte) error
+		// Template helpers
+
+		FuncDeclaration(*parser.Func) string // Generates a function declaration
+		TypeDeclaration(*parser.Type) string // Generates a field declaration
+		Identifier(string, string) string    // Generates a unique identifier for the second string, the first one is used as a prefix
+
+		// Generation helpers
+
+		EmitTemplate(string, *template.Template, any) error // Emit a template at the given relative path
+		EmitFile(string, []byte) error                      // Emit a file at the given relative path
 	}
 
 	context struct {
 		parser.Result
-		dir string
+
+		identifiers *collection.Set[string]
+		dir         string
 	}
 )
 
 func newContext(dir string, result parser.Result) Context {
 	return &context{
-		dir:    dir,
-		Result: result,
+		dir:         dir,
+		identifiers: collection.NewSet[string](),
+		Result:      result,
 	}
 }
 
+func (c *context) Identifier(name string, path string) string {
+	return c.identifiers.SetLazy(path, func() string {
+		return fmt.Sprintf("%s_%s", name, crypto.Prefix(path, identifierPrefixLength))
+	})
+}
+
+func (c *context) FuncDeclaration(fn *parser.Func) string {
+	if fn.Package() == nil {
+		return fn.Name()
+	}
+
+	return fmt.Sprintf("%s.%s",
+		c.Identifier(fn.Package().Name(), fn.Package().Path()),
+		fn.Name(),
+	)
+}
+
+func (c *context) TypeDeclaration(typ *parser.Type) string {
+	if typ.Package() == nil {
+		return typ.Name()
+	}
+
+	return fmt.Sprintf("%s.%s",
+		c.Identifier(typ.Package().Name(), typ.Package().Path()),
+		typ.Name(),
+	)
+}
+
 func (c *context) EmitTemplate(path string, tmpl *template.Template, data any) error {
-	p, err := c.mkdirAll(path)
+	var buf bytes.Buffer
 
-	if err != nil {
+	if err := tmpl.Execute(&buf, data); err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(p, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, defaultPermissions)
-
-	if err != nil {
-		return err
-	}
-
-	defer file.Close()
-
-	return tmpl.Execute(file, data)
+	return c.EmitFile(path, buf.Bytes())
 }
 
 func (c *context) EmitFile(path string, data []byte) error {
 	p, err := c.mkdirAll(path)
+
+	if err != nil {
+		return err
+	}
+
+	// Format the source file
+	data, err = format.Source(data)
 
 	if err != nil {
 		return err

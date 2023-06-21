@@ -5,6 +5,7 @@ import (
 
 	_ "embed"
 
+	"github.com/YuukanOO/ease/pkg/collection"
 	"github.com/YuukanOO/ease/pkg/generator"
 	"github.com/YuukanOO/ease/pkg/parser"
 	"github.com/YuukanOO/ease/pkg/parser/api"
@@ -26,24 +27,47 @@ func New(schema *api.API) generator.Extension {
 	}
 }
 
+type data struct {
+	generator.Context
+
+	Schema  *api.API
+	Fields  *collection.Set[*parser.Type]
+	Imports *collection.Set[*parser.Package]
+}
+
 func (g *ginGenerator) Generate(ctx generator.Context) error {
-	recvs := make(map[string]*parser.Type)
+	templateData := &data{
+		Context: ctx,
+		Schema:  g.schema,
+		Fields:  collection.NewSet[*parser.Type](),
+		Imports: collection.NewSet[*parser.Package](),
+	}
+
 	dependencies := make(map[string]*parser.Func)
-	imports := make(map[string]*parser.Package)
 
 	// To build the Server struct, we need to find every handler which as a receiver
 	for _, endpoint := range g.schema.Endpoints() {
+		// Register each package used by params
+		for _, param := range endpoint.Handler().Params() {
+			pkg := param.Type().Package()
+
+			if pkg != nil {
+				templateData.Imports.Set(pkg.Path(), pkg)
+			}
+		}
+
 		recv := endpoint.Handler().Recv()
+
 		if recv == nil {
 			continue
 		}
 
 		recvTyp := recv.Type()
 
-		recvs[recvTyp.String()] = recvTyp
+		templateData.Fields.Set(recvTyp.String(), recvTyp)
 	}
 
-	for t, recv := range recvs {
+	for _, recv := range templateData.Fields.Items() {
 		var ctor *parser.Func
 
 		for _, fn := range ctx.Funcs() {
@@ -65,20 +89,10 @@ func (g *ginGenerator) Generate(ctx generator.Context) error {
 			continue
 		}
 
-		dependencies[t] = ctor
+		dependencies[recv.String()] = ctor
 		pkg := ctor.Package()
-		imports[pkg.Path()] = pkg
+		templateData.Imports.Set(pkg.Path(), pkg)
 	}
 
-	return ctx.EmitTemplate("main.go", mainTemplate, data{
-		Schema:  g.schema,
-		Imports: imports,
-		Fields:  recvs,
-	})
-}
-
-type data struct {
-	Schema  *api.API
-	Fields  map[string]*parser.Type
-	Imports map[string]*parser.Package
+	return ctx.EmitTemplate("main.go", mainTemplate, templateData)
 }

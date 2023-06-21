@@ -11,7 +11,6 @@ import (
 type Decl struct {
 	lazy       sync.Once
 	comments   []*ast.CommentGroup
-	exported   bool
 	name       string
 	doc        string
 	directives map[string]*Directive
@@ -23,14 +22,13 @@ func newDeclaration(ident *ast.Ident, comments ...*ast.CommentGroup) *Decl {
 	}
 
 	if ident != nil {
-		decl.exported = token.IsExported(ident.Name)
 		decl.name = ident.Name
 	}
 
 	return decl
 }
 
-func (d *Decl) IsExported() bool { return d.exported }
+func (d *Decl) IsExported() bool { return token.IsExported(d.name) }
 func (d *Decl) Name() string     { return d.name }
 
 func (d *Decl) Doc() string {

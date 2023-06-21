@@ -6,6 +6,7 @@ package todo
 import (
 	contextalias "context"
 	"errors"
+	"fmt"
 	"sync"
 	"text/template"
 )
@@ -82,4 +83,9 @@ func (s *TodoService) Update(ctx contextalias.Context, id uint, cmd TodoUpdateCo
 //ease:api method=GET path=/api/_health
 func HealthCheck(ctx contextalias.Context) (string, error) {
 	return "ok", nil
+}
+
+// ease:api path=/api/without-params
+func (s *TodoService) WithoutParams() {
+	fmt.Println("without params nor return value")
 }

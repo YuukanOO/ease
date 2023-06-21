@@ -39,7 +39,7 @@ type (
 		method  Method
 		path    string
 		params  []*Param
-		returns []*parser.Var
+		returns *parser.Var
 	}
 
 	Param struct {
@@ -56,12 +56,12 @@ func (s *API) Title() string          { return s.title }
 func (s *API) Description() string    { return s.description }
 func (s *API) Endpoints() []*Endpoint { return s.endpoints }
 
-func (e *Endpoint) String() string         { return fmt.Sprintf("%s %s", e.method, e.path) }
-func (e *Endpoint) Handler() *parser.Func  { return e.handler }
-func (e *Endpoint) Method() Method         { return e.method }
-func (e *Endpoint) Path() string           { return e.path }
-func (e *Endpoint) Params() []*Param       { return e.params }
-func (e *Endpoint) Returns() []*parser.Var { return e.returns }
+func (e *Endpoint) String() string        { return fmt.Sprintf("%s %s", e.method, e.path) }
+func (e *Endpoint) Handler() *parser.Func { return e.handler }
+func (e *Endpoint) Method() Method        { return e.method }
+func (e *Endpoint) Path() string          { return e.path }
+func (e *Endpoint) Params() []*Param      { return e.params }
+func (e *Endpoint) Returns() *parser.Var  { return e.returns }
 
 func (p *Param) Name() string      { return p.name }
 func (p *Param) Src() ParamFrom    { return p.src }
@@ -85,13 +85,16 @@ func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint
 		}
 	}
 
+	if endpoint.method == "" {
+		endpoint.method = MethodGet
+	}
+
 	if endpoint.path == "" {
 		return nil, ErrInvalidPath
 	}
 
 	endpoint.handler = handler
 	endpoint.params = make([]*Param, len(endpoint.handler.Params()))
-	endpoint.returns = endpoint.handler.Returns()
 
 	for i, param := range endpoint.handler.Params() {
 		endpointParam := &Param{
@@ -116,6 +119,15 @@ func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint
 		}
 
 		endpoint.params[i] = endpointParam
+	}
+
+	for _, ret := range endpoint.handler.Returns() {
+		if ret.Type().IsError() {
+			continue
+		}
+
+		endpoint.returns = ret
+		break
 	}
 
 	return endpoint, nil

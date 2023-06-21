@@ -1,9 +1,7 @@
 package parser
 
 import (
-	"fmt"
 	"go/ast"
-	"go/token"
 	"sync"
 )
 
@@ -42,14 +40,8 @@ func (f *Func) Returns() []*Var {
 	return f.returns
 }
 
-func (f *Func) IsExported() bool  { return token.IsExported(f.name) }
 func (f *Func) Package() *Package { return f.pkg }
 func (f *Func) String() string    { return fullyQualifiedName(f.pkg, f.name) }
-
-// Returns a string representing the type declaration prefixed with the package alias.
-func (f *Func) Declaration() string {
-	return fmt.Sprintf("%s.%s", f.pkg.Alias(), f.Name())
-}
 
 func (f *Func) parse() {
 	f.lazy.Do(func() {
