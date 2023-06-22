@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	//go:embed main.go.tmpl
-	mainTemplateContent string
-	mainTemplate        = template.Must(template.New("").Parse(mainTemplateContent))
+	//go:embed server.go.tmpl
+	serverTemplateContent string
+	serverTemplate        = template.Must(template.New("").Parse(serverTemplateContent))
 )
 
 type ginGenerator struct {
@@ -30,20 +30,20 @@ func New(schema *api.API) generator.Extension {
 type data struct {
 	generator.Context
 
-	Schema  *api.API
-	Fields  *collection.Set[*parser.Type]
-	Imports *collection.Set[*parser.Package]
+	Schema       *api.API
+	Fields       *collection.Set[*parser.Type]
+	Imports      *collection.Set[*parser.Package]
+	Dependencies *collection.Set[*parser.Func]
 }
 
 func (g *ginGenerator) Generate(ctx generator.Context) error {
 	templateData := &data{
-		Context: ctx,
-		Schema:  g.schema,
-		Fields:  collection.NewSet[*parser.Type](),
-		Imports: collection.NewSet[*parser.Package](),
+		Context:      ctx,
+		Schema:       g.schema,
+		Fields:       collection.NewSet[*parser.Type](),
+		Imports:      collection.NewSet[*parser.Package](),
+		Dependencies: collection.NewSet[*parser.Func](),
 	}
-
-	dependencies := make(map[string]*parser.Func)
 
 	// To build the Server struct, we need to find every handler which as a receiver
 	for _, endpoint := range g.schema.Endpoints() {
@@ -89,10 +89,15 @@ func (g *ginGenerator) Generate(ctx generator.Context) error {
 			continue
 		}
 
-		dependencies[recv.String()] = ctor
+		templateData.Dependencies.Set(recv.String(), ctor)
+
 		pkg := ctor.Package()
+
+		if pkg == nil {
+			continue
+		}
 		templateData.Imports.Set(pkg.Path(), pkg)
 	}
 
-	return ctx.EmitTemplate("main.go", mainTemplate, templateData)
+	return ctx.EmitTemplate("server.go", serverTemplate, templateData)
 }

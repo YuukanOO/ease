@@ -66,6 +66,10 @@ func (e *Endpoint) Returns() *parser.Var  { return e.returns }
 func (p *Param) Name() string      { return p.name }
 func (p *Param) Src() ParamFrom    { return p.src }
 func (p *Param) Decl() *parser.Var { return p.decl }
+func (p *Param) FromSource() bool  { return p.src == FromSource }
+func (p *Param) FromPath() bool    { return p.src == FromPath }
+func (p *Param) FromQuery() bool   { return p.src == FromQuery }
+func (p *Param) FromBody() bool    { return p.src == FromBody }
 
 func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint, error) {
 	endpoint := &Endpoint{}

@@ -38,7 +38,7 @@ type TodoCreateCommand struct {
 // Creates a new todo with the given text content.
 //
 //ease:api method=POST path=/api/todos
-func (s *TodoService) Create(ctx contextalias.Context, cmd *TodoCreateCommand) (*Todo, error) {
+func (s *TodoService) Create(ctx contextalias.Context, cmd TodoCreateCommand) (*Todo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,6 +75,13 @@ func (s *TodoService) Update(ctx contextalias.Context, id uint, cmd TodoUpdateCo
 	}
 
 	return nil, ErrNotFound
+}
+
+var ErrOperationNotImplemented = NewAppError("operation_not_supported")
+
+// ease:api method=DELETE path=/api/todos/:id
+func (s *TodoService) Delete(id uint) error {
+	return ErrOperationNotImplemented
 }
 
 // Gets the server health

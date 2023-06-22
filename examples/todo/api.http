@@ -1,0 +1,27 @@
+@url=http://localhost:8080
+
+GET {{url}}/api/todos
+
+###
+
+POST {{url}}/api/todos
+Content-Type: application/json
+
+{
+    "text": "Test 2",
+    "completed": true
+}
+
+###
+
+PUT {{url}}/api/todos/2
+Content-Type: application/json
+
+{
+    "completed": true
+}
+
+###
+
+DELETE {{url}}/api/todos/2
+
