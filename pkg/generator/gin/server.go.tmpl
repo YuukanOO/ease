@@ -34,7 +34,13 @@ func NewServer() (s *Server, err error) {
 	{{- end }}
 	{{- end }}
 	{{ range .Schema.Endpoints }}
-	s.Router.{{ .Method }}("{{ .Path }}", s.{{ $.Identifier .Handler.Name .Handler.String }})
+	s.Router.{{ .Method }}("{{ .Path }}", {{ if .IsRaw }}gin.WrapF(
+		{{- if .Handler.Recv -}}
+		s.{{ $.Identifier .Handler.Recv.Type.Name .Handler.Recv.Type.String }}.{{ .Handler.Name }}
+		{{- else -}}
+		{{ $.FuncDeclaration .Handler }}
+		{{- end -}}
+	){{ else }}s.{{ $.Identifier .Handler.Name .Handler.String }}{{ end }})
 	{{- end }}
 
 	return s, nil
@@ -54,6 +60,9 @@ func main() {
 	s.Listen()
 }
 {{ range .Schema.Endpoints }}
+{{- if .IsRaw }}
+{{- continue }}
+{{- end }}
 func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context) {
 	{{- range .Params }}
 	var {{ .Name }} {{ $.TypeDeclaration .Decl.Type }}

@@ -33,7 +33,7 @@ func (p *parser) Parse(packageNames ...string) (Result, error) {
 	fset := token.NewFileSet()
 	pkgs, err := packages.Load(&packages.Config{
 		Fset: fset,
-		Mode:/*packages.NeedFiles |  packages.NeedDeps | packages.NeedImports | */ packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedModule | packages.NeedName,
+		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedModule | packages.NeedName,
 	}, packageNames...)
 
 	if err != nil {

@@ -47,12 +47,16 @@ func (g *ginGenerator) Generate(ctx generator.Context) error {
 
 	// To build the Server struct, we need to find every handler which as a receiver
 	for _, endpoint := range g.schema.Endpoints() {
-		// Register each package used by params
-		for _, param := range endpoint.Handler().Params() {
-			pkg := param.Type().Package()
+		// If its a raw endpoint, we already import the net/http package so don't need to loop
+		// through the params
+		if !endpoint.IsRaw() {
+			// Register each package used by params
+			for _, param := range endpoint.Handler().Params() {
+				pkg := param.Type().Package()
 
-			if pkg != nil {
-				templateData.Imports.Set(pkg.Path(), pkg)
+				if pkg != nil {
+					templateData.Imports.Set(pkg.Path(), pkg)
+				}
 			}
 		}
 

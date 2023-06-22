@@ -7,6 +7,7 @@ import (
 	contextalias "context"
 	"errors"
 	"fmt"
+	"net/http"
 	"sync"
 	"text/template"
 )
@@ -95,4 +96,14 @@ func HealthCheck(ctx contextalias.Context) string {
 // ease:api path=/api/without-params
 func (s *TodoService) WithoutParams() {
 	fmt.Println("without params nor return value")
+}
+
+// ease:api method=GET path=/api/raw
+func (s *TodoService) RawEndpoint(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(204)
+}
+
+// ease:api method=GET path=/api/raw-without-receiver
+func RawWithoutReceiver(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(204)
 }

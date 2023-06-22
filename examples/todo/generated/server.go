@@ -26,6 +26,8 @@ func NewServer() (s *Server, err error) {
 	s.Router.DELETE("/api/todos/:id", s.Delete_df53ad)
 	s.Router.GET("/api/_health", s.HealthCheck_06868b)
 	s.Router.GET("/api/without-params", s.WithoutParams_5fd7e9)
+	s.Router.GET("/api/raw", gin.WrapF(s.TodoService_9abf69.RawEndpoint))
+	s.Router.GET("/api/raw-without-receiver", gin.WrapF(todo_ca7678.RawWithoutReceiver))
 
 	return s, nil
 }

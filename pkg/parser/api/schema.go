@@ -24,6 +24,8 @@ const (
 const (
 	methodDirectiveParam = "method"
 	pathDirectiveParam   = "path"
+	rawHttpWriter        = "net/http.ResponseWriter"
+	rawHttpRequest       = "net/http.Request"
 )
 
 type (
@@ -62,6 +64,16 @@ func (e *Endpoint) Method() Method        { return e.method }
 func (e *Endpoint) Path() string          { return e.path }
 func (e *Endpoint) Params() []*Param      { return e.params }
 func (e *Endpoint) Returns() *parser.Var  { return e.returns }
+
+func (e *Endpoint) IsRaw() bool {
+	p := e.Params()
+
+	if len(p) != 2 {
+		return false
+	}
+
+	return p[0].decl.Type().String() == rawHttpWriter && p[1].decl.Type().String() == rawHttpRequest
+}
 
 func (p *Param) Name() string      { return p.name }
 func (p *Param) Src() ParamFrom    { return p.src }

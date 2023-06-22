@@ -11,7 +11,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}/cmd",
       "cwd": "${workspaceFolder}/examples/todo",
-      "args": ["github.com/YuukanOO/ease/todo..."]
+      "args": ["github.com/YuukanOO/ease/todo...", "context"]
     }
   ]
 }
