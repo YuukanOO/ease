@@ -52,7 +52,7 @@ func (s *Server) Create_9e7e22(c *gin.Context) {
 	if !bind(c, &cmd) {
 		return
 	}
-	ginResult, err := s.TodoService_9abf69.Create(
+	result_5a2298, err := s.TodoService_9abf69.Create(
 		ctx,
 		cmd,
 	)
@@ -60,19 +60,19 @@ func (s *Server) Create_9e7e22(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, ginResult)
+	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) List_765091(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
-	ginResult, err := s.TodoService_9abf69.List(
+	result_5a2298, err := s.TodoService_9abf69.List(
 		ctx,
 	)
 	if err != nil {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, ginResult)
+	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) Update_0cdc62(c *gin.Context) {
@@ -82,7 +82,7 @@ func (s *Server) Update_0cdc62(c *gin.Context) {
 	if !bind(c, &cmd) {
 		return
 	}
-	ginResult, err := s.TodoService_9abf69.Update(
+	result_5a2298, err := s.TodoService_9abf69.Update(
 		ctx,
 		id,
 		cmd,
@@ -91,7 +91,7 @@ func (s *Server) Update_0cdc62(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, ginResult)
+	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) Delete_df53ad(c *gin.Context) {
@@ -108,10 +108,10 @@ func (s *Server) Delete_df53ad(c *gin.Context) {
 
 func (s *Server) HealthCheck_06868b(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
-	ginResult := todo_ca7678.HealthCheck(
+	result_5a2298 := todo_ca7678.HealthCheck(
 		ctx,
 	)
-	c.JSON(http.StatusOK, ginResult)
+	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) WithoutParams_5fd7e9(c *gin.Context) {

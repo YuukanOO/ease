@@ -15,6 +15,7 @@ import (
 
 const (
 	defaultPermissions     = 0644
+	defaultDirPermissions  = 0755
 	identifierPrefixLength = 6
 )
 
@@ -24,6 +25,7 @@ type (
 
 		// Template helpers
 
+		// TODO: merge them both since they are basically the same
 		FuncDeclaration(*parser.Func) string // Generates a function declaration
 		TypeDeclaration(*parser.Type) string // Generates a field declaration
 		Identifier(string, string) string    // Generates a unique identifier for the second string, the first one is used as a prefix, this is useful to avoid name conflicts
@@ -109,7 +111,7 @@ func (c *context) EmitFile(path string, data []byte) error {
 func (c *context) mkdirAll(path string) (string, error) {
 	fullpath := filepath.Join(c.dir, path)
 
-	if err := os.MkdirAll(filepath.Dir(fullpath), defaultPermissions); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fullpath), defaultDirPermissions); err != nil {
 		return "", err
 	}
 
