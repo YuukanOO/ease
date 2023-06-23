@@ -12,7 +12,7 @@ type (
 	Result interface {
 		Packages() []*Package
 		Types() []*Type
-		Funcs() []*Func
+		Funcs() Funcs
 	}
 
 	// result of the parsing operation for a multitude of packages.
@@ -33,7 +33,7 @@ func newResult() *result {
 
 func (r *result) Packages() []*Package { return r.pkgs.Items() }
 func (r *result) Types() []*Type       { return r.types.Items() }
-func (r *result) Funcs() []*Func       { return r.funcs.Items() }
+func (r *result) Funcs() Funcs         { return r.funcs.Items() }
 
 // Register the given function declaration.
 func (r *result) RegisterFunc(at *FileResult, decl *ast.FuncDecl) {

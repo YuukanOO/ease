@@ -31,18 +31,16 @@ type data struct {
 	generator.Context
 
 	Schema       *api.API
-	Fields       *collection.Set[*parser.Type]
 	Imports      *collection.Set[*parser.Package]
-	Dependencies *collection.Set[*parser.Func]
+	Dependencies []*parser.Func
 }
 
 func (g *ginGenerator) Generate(ctx generator.Context) error {
+	fields := collection.NewSet[*parser.Type]()
 	templateData := &data{
-		Context:      ctx,
-		Schema:       g.schema,
-		Fields:       collection.NewSet[*parser.Type](),
-		Imports:      collection.NewSet[*parser.Package](),
-		Dependencies: collection.NewSet[*parser.Func](),
+		Context: ctx,
+		Schema:  g.schema,
+		Imports: collection.NewSet[*parser.Package](),
 	}
 
 	// To build the Server struct, we need to find every handler which as a receiver
@@ -74,38 +72,25 @@ func (g *ginGenerator) Generate(ctx generator.Context) error {
 
 		recvTyp := recv.Type()
 
-		templateData.Fields.Set(recvTyp.String(), recvTyp)
+		fields.Set(recvTyp.String(), recvTyp)
 	}
 
-	for _, recv := range templateData.Fields.Items() {
-		var ctor *parser.Func
+	resolved, err := ctx.Funcs().Resolve(fields.Items()...)
 
-		for _, fn := range ctx.Funcs() {
-			for _, ret := range fn.Returns() {
-				if ret.Type() == recv {
-					ctor = fn
-					break
-				}
-			}
+	if err != nil {
+		return err
+	}
 
-			// TODO: maybe we can try to find every func matching and raise an error if multiple was found instead
-			if ctor != nil {
-				break
-			}
-		}
+	templateData.Dependencies = resolved.Funcs()
 
-		if ctor == nil {
-			// No ctor found, that's an error!
-			continue
-		}
-
-		templateData.Dependencies.Set(recv.String(), ctor)
-
-		pkg := ctor.Package()
+	// Add packages needed by dependencies
+	for _, fn := range templateData.Dependencies {
+		pkg := fn.Package()
 
 		if pkg == nil {
 			continue
 		}
+
 		templateData.Imports.Set(pkg.Path(), pkg)
 	}
 

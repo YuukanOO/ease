@@ -12,6 +12,7 @@ import (
 
 type Server struct {
 	Router             *gin.Engine
+	Logger_9c64fc      todo_ca7678.Logger
 	TodoService_9abf69 *todo_ca7678.TodoService
 }
 
@@ -19,7 +20,10 @@ func NewServer() (s *Server, err error) {
 	s = &Server{
 		Router: gin.Default(),
 	}
-	s.TodoService_9abf69 = todo_ca7678.NewTodoService()
+	s.Logger_9c64fc = todo_ca7678.NewLogger()
+	s.TodoService_9abf69 = todo_ca7678.NewTodoService(
+		s.Logger_9c64fc,
+	)
 
 	s.Router.POST("/api/todos", s.Create_9e7e22)
 	s.Router.GET("/api/todos", s.List_765091)
@@ -61,7 +65,7 @@ func (s *Server) Create_9e7e22(c *gin.Context) {
 		HandleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, result_5a2298)
+	c.JSON(http.StatusCreated, result_5a2298)
 }
 
 func (s *Server) List_765091(c *gin.Context) {

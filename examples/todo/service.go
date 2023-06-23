@@ -6,7 +6,6 @@ package todo
 import (
 	contextalias "context"
 	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 )
@@ -17,15 +16,17 @@ type (
 	SomeInterface interface{}
 
 	TodoService struct {
-		todos []*Todo
-		mu    sync.Mutex
+		todos  []*Todo
+		mu     sync.Mutex
+		logger Logger
 	}
 )
 
 // Builds up a new TodoService.
-func NewTodoService() *TodoService {
+func NewTodoService(l Logger) *TodoService {
 	return &TodoService{
-		todos: make([]*Todo, 0),
+		todos:  make([]*Todo, 0),
+		logger: l,
 	}
 }
 
@@ -84,7 +85,7 @@ func (s *TodoService) Delete(id uint) error {
 
 // ease:api path=/api/without-params
 func (s *TodoService) WithoutParams() {
-	fmt.Println("without params nor return value")
+	s.logger.Log("without params nor return value")
 }
 
 // ease:api method=GET path=/api/raw

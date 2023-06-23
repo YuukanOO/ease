@@ -13,8 +13,12 @@ import (
 
 type Server struct {
 	Router *gin.Engine
-	{{- range .Fields.Items }}
-	{{ $.Identifier .Name .String }} *{{ $.Declaration . }}
+	{{- range .Dependencies }}
+	{{- range .Returns }}
+	{{- if not .Type.IsError }}
+	{{ $.Identifier .Type.Name .Type.String }} {{ if .IsPointer }}*{{ end }}{{ $.Declaration .Type }}
+	{{- end }}
+	{{- end }}
 	{{- end }}
 }
 
@@ -23,11 +27,15 @@ func NewServer() (s *Server, err error) {
 		Router: gin.Default(),
 	}
 
-	{{- range .Dependencies.Items }}
+	{{- range .Dependencies }}
 	{{ range $idx, $ret := .Returns -}}
 	{{ if ne $idx 0 }}, {{ end }}{{ if $ret.Type.IsError }}err{{ else }}s.{{ $.Identifier $ret.Type.Name $ret.Type.String }}{{ end }}
 	{{- end -}}
-	= {{ $.Declaration . }}()
+	= {{ $.Declaration . }}(
+		{{- range .Params }}
+		s.{{ $.Identifier .Type.Name .Type.String }},
+		{{- end }}
+	)
 	{{- if .Returns.HasError }}
 	if err != nil {
 		return nil, err
@@ -99,7 +107,7 @@ func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 	}
 	{{- end }}
 	{{- if .Returns }}
-	c.JSON(http.StatusOK, {{ $ginResultName }})
+	c.JSON({{ if eq .Method "POST" }}http.StatusCreated{{ else }}http.StatusOK{{ end }}, {{ $ginResultName }})
 	{{- else}}
 	c.Status(http.StatusNoContent)
 	{{- end }}

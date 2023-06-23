@@ -1,12 +1,14 @@
 package parser
 
 import (
+	"fmt"
 	"go/ast"
 	"sync"
 )
 
 type (
-	Vars []*Var
+	Vars  []*Var
+	Funcs []*Func
 
 	Func struct {
 		*Decl
@@ -83,4 +85,80 @@ func (v Vars) HasError() bool {
 	}
 
 	return false
+}
+
+type ResolveResult struct {
+	// TODO: add the list of packages needed to import those funcs maybe?
+	ordered []*Func
+	types   map[string]*Func
+}
+
+// Resolve the given types by finding which functions are needed to be called to
+// actually instantiate them. It will recusrsively resolve the functions params to build
+// up the total chain.
+func (fns Funcs) Resolve(types ...*Type) (*ResolveResult, error) {
+	r := &ResolveResult{
+		types: make(map[string]*Func),
+	}
+
+	for _, typ := range types {
+		_, found := r.types[typ.String()]
+
+		// We already know how to resolve this type.
+		if found {
+			continue
+		}
+
+		for _, f := range fns {
+			for _, ret := range f.Returns() {
+				if ret.Type() == typ {
+					resolved, err := r.resolveFn(fns, f)
+
+					if err != nil {
+						return nil, err
+					}
+
+					r.types[typ.String()] = resolved
+					// FIXME: refacto needed to remove duplication with resolveFn
+				}
+			}
+		}
+	}
+
+	return r, nil
+}
+
+func (r *ResolveResult) Funcs() []*Func { return r.ordered }
+
+func (r *ResolveResult) resolveFn(fns Funcs, fn *Func) (*Func, error) {
+	for _, p := range fn.Params() {
+		_, found := r.types[p.Type().String()]
+
+		if found {
+			continue
+		}
+
+		for _, f := range fns {
+			for _, ret := range f.Returns() {
+				if ret.Type() == p.Type() {
+					resolved, err := r.resolveFn(fns, f)
+
+					if err != nil {
+						return nil, err
+					}
+
+					r.types[p.Type().String()] = resolved
+					found = true
+				}
+			}
+		}
+
+		if !found {
+			return nil, fmt.Errorf("could not find a valid constructor for %s", p.Type().String())
+		}
+	}
+
+	r.ordered = append(r.ordered, fn)
+
+	return fn, nil
 }
