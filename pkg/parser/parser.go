@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"fmt"
 	"go/token"
+	"path"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -40,10 +42,27 @@ func (p *parser) Parse(packageNames ...string) (Result, error) {
 		return nil, err
 	}
 
+	var generatedModulePath string
+	mod := findMainModule(pkgs)
+
+	if mod != nil {
+		generatedModulePath = path.Join(mod.Path, "generated") // FIXME: no hardcoded value!
+	}
+
 	result := newResult()
 
 	// And process each package files
 	for _, pkg := range pkgs {
+		if len(pkg.Errors) > 0 {
+			fmt.Println(pkg.Errors) // FIXME: replace with logger call
+			continue
+		}
+
+		// Skip the generated package
+		if pkg.PkgPath == generatedModulePath {
+			continue
+		}
+
 		for _, file := range pkg.Syntax {
 			if err = result.ParseFile(pkg.PkgPath, file); err != nil {
 				return nil, err
@@ -59,4 +78,14 @@ func (p *parser) Parse(packageNames ...string) (Result, error) {
 	}
 
 	return result, nil
+}
+
+func findMainModule(pkgs []*packages.Package) *packages.Module {
+	for _, pkg := range pkgs {
+		if pkg.Module.Main {
+			return pkg.Module
+		}
+	}
+
+	return nil
 }

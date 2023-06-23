@@ -54,7 +54,7 @@ func (r *result) RegisterType(at *FileResult, decl *ast.TypeSpec, comment *ast.C
 func (r *result) Package(path string) *Package {
 	sanitizedPath := strings.Trim(path, "\"")
 
-	return r.pkgs.SetLazy(sanitizedPath, func() *Package {
+	return r.pkgs.SetFunc(sanitizedPath, func() *Package {
 		return newPackage(sanitizedPath)
 	})
 }
@@ -68,7 +68,7 @@ func (r *result) Type(pkg *Package, ident *ast.Ident) *Type {
 
 	fqn := fullyQualifiedName(pkg, ident.Name)
 
-	return r.types.SetLazy(fqn, func() *Type {
+	return r.types.SetFunc(fqn, func() *Type {
 		return newType(pkg, ident)
 	})
 }

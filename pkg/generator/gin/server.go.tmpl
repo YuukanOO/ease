@@ -14,7 +14,7 @@ import (
 type Server struct {
 	Router *gin.Engine
 	{{- range .Fields.Items }}
-	{{ $.Identifier .Name .String }} *{{ $.TypeDeclaration . }}
+	{{ $.Identifier .Name .String }} *{{ $.Declaration . }}
 	{{- end }}
 }
 
@@ -27,7 +27,7 @@ func NewServer() (s *Server, err error) {
 	{{ range $idx, $ret := .Returns -}}
 	{{ if ne $idx 0 }}, {{ end }}{{ if $ret.Type.IsError }}err{{ else }}s.{{ $.Identifier $ret.Type.Name $ret.Type.String }}{{ end }}
 	{{- end -}}
-	= {{ $.FuncDeclaration . }}()
+	= {{ $.Declaration . }}()
 	{{- if .Returns.HasError }}
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func NewServer() (s *Server, err error) {
 		{{- if .Handler.Recv -}}
 		s.{{ $.Identifier .Handler.Recv.Type.Name .Handler.Recv.Type.String }}.{{ .Handler.Name }}
 		{{- else -}}
-		{{ $.FuncDeclaration .Handler }}
+		{{ $.Declaration .Handler }}
 		{{- end -}}
 	){{ else }}s.{{ $.Identifier .Handler.Name .Handler.String }}{{ end }})
 	{{- end }}
@@ -66,11 +66,11 @@ func main() {
 {{- end }}
 func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context) {
 	{{- range .Params }}
-	var {{ .Name }} {{ $.TypeDeclaration .Decl.Type }}
+	var {{ .Name }} {{ $.Declaration .Decl.Type }}
 	{{- if .Decl.Type.IsContext }} = c.Request.Context()
-	{{- else if .FromPath }} = {{ if ne .Decl.Type.Name "string" }}paramToInt[{{ .Decl.Type.Name }}](c, "{{ .Name }}"){{ else }} c.Param("{{ .Name }}"){{ end }}
+	{{- else if .FromPath }} = {{ if ne .Decl.Type.Name "string" }}ParamToInt[{{ .Decl.Type.Name }}](c, "{{ .Name }}"){{ else }} c.Param("{{ .Name }}"){{ end }}
 	{{- else if or .FromBody .FromQuery }}
-	if !bind(c, &{{ .Name }}) {
+	if !Bind(c, &{{ .Name }}) {
 		return
 	}
 	{{- end }}
@@ -85,7 +85,7 @@ func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 	{{- if .Handler.Recv -}}
 	s.{{ $.Identifier .Handler.Recv.Type.Name .Handler.Recv.Type.String }}.{{ .Handler.Name }}
 	{{- else -}}
-	{{ $.FuncDeclaration .Handler }}
+	{{ $.Declaration .Handler }}
 	{{- end -}}
 	(
 	{{- range .Params}}
@@ -94,7 +94,7 @@ func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 	)
 	{{- if .Handler.Returns.HasError }}
 	if err != nil {
-		handleError(c, err)
+		HandleError(c, err)
 		return
 	}
 	{{- end }}
@@ -105,7 +105,7 @@ func (s *Server) {{ $.Identifier .Handler.Name .Handler.String }}(c *gin.Context
 	{{- end }}
 }
 {{ end }}
-func paramToInt[T int | uint](c *gin.Context, name string) T {
+func ParamToInt[T int | uint](c *gin.Context, name string) T {
 	value, _ := strconv.Atoi(c.Param(name))
 	return T(value)
 }
@@ -115,7 +115,7 @@ type HttpError interface {
 	Status() int
 }
 
-func handleError(c *gin.Context, err error) {
+func HandleError(c *gin.Context, err error) {
 	c.Error(err)
 
 	httpErr, implementHttpErr := err.(HttpError)
@@ -128,7 +128,7 @@ func handleError(c *gin.Context, err error) {
 	c.JSON(httpErr.Status(), err)
 }
 
-func bind[T any](c *gin.Context, target *T) bool {
+func Bind[T any](c *gin.Context, target *T) bool {
 	if err := c.ShouldBind(target); err != nil {
 		c.AbortWithError(http.StatusUnprocessableEntity, err)
 		return false

@@ -6,6 +6,7 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/YuukanOO/ease/pkg/collection"
@@ -20,15 +21,19 @@ const (
 )
 
 type (
+	// Represents a declaration inside a package.
+	ScopedDecl interface {
+		Package() *parser.Package
+		Name() string
+	}
+
 	Context interface {
 		parser.Result
 
 		// Template helpers
 
-		// TODO: merge them both since they are basically the same
-		FuncDeclaration(*parser.Func) string // Generates a function declaration
-		TypeDeclaration(*parser.Type) string // Generates a field declaration
-		Identifier(string, string) string    // Generates a unique identifier for the second string, the first one is used as a prefix, this is useful to avoid name conflicts
+		Declaration(ScopedDecl) string    // Generates a declaration from a type or a func
+		Identifier(string, string) string // Generates a unique identifier for the second string, the first one is used as a prefix, this is useful to avoid name conflicts
 
 		// Generation helpers
 
@@ -53,30 +58,19 @@ func newContext(dir string, result parser.Result) Context {
 }
 
 func (c *context) Identifier(prefix string, key string) string {
-	return c.identifiers.SetLazy(key, func() string {
-		return fmt.Sprintf("%s_%s", prefix, crypto.Prefix(key, identifierPrefixLength))
+	return c.identifiers.SetFunc(key, func() string {
+		return fmt.Sprintf("%s_%s", strings.ReplaceAll(prefix, "-", "_"), crypto.Prefix(key, identifierPrefixLength))
 	})
 }
 
-func (c *context) FuncDeclaration(fn *parser.Func) string {
-	if fn.Package() == nil {
-		return fn.Name()
+func (c *context) Declaration(decl ScopedDecl) string {
+	if decl.Package() == nil {
+		return decl.Name()
 	}
 
 	return fmt.Sprintf("%s.%s",
-		c.Identifier(fn.Package().Name(), fn.Package().Path()),
-		fn.Name(),
-	)
-}
-
-func (c *context) TypeDeclaration(typ *parser.Type) string {
-	if typ.Package() == nil {
-		return typ.Name()
-	}
-
-	return fmt.Sprintf("%s.%s",
-		c.Identifier(typ.Package().Name(), typ.Package().Path()),
-		typ.Name(),
+		c.Identifier(decl.Package().Name(), decl.Package().Path()),
+		decl.Name(),
 	)
 }
 

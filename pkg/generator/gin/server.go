@@ -50,9 +50,15 @@ func (g *ginGenerator) Generate(ctx generator.Context) error {
 		// If its a raw endpoint, we already import the net/http package so don't need to loop
 		// through the params
 		if !endpoint.IsRaw() {
+			pkg := endpoint.Handler().Package()
+
+			if pkg != nil {
+				templateData.Imports.Set(pkg.Path(), pkg)
+			}
+
 			// Register each package used by params
 			for _, param := range endpoint.Handler().Params() {
-				pkg := param.Type().Package()
+				pkg = param.Type().Package()
 
 				if pkg != nil {
 					templateData.Imports.Set(pkg.Path(), pkg)

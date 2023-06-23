@@ -36,6 +36,7 @@ func (d *Decl) Doc() string {
 	return d.doc
 }
 
+// Returns the directive with the given name if it exists.
 func (d *Decl) Directive(name string) (*Directive, bool) {
 	d.parse()
 	directive, found := d.directives[name]

@@ -33,8 +33,8 @@ func TestSet(t *testing.T) {
 			return "bar"
 		}
 
-		s.SetLazy("foo", lazyFn)
-		s.SetLazy("foo", lazyFn)
+		s.SetFunc("foo", lazyFn)
+		s.SetFunc("foo", lazyFn)
 
 		items := s.Items()
 

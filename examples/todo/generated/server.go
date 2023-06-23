@@ -3,6 +3,7 @@ package main
 
 import (
 	context_ea7792 "context"
+	ease_external_example_e02a9c "github.com/YuukanOO/ease-external-example"
 	todo_ca7678 "github.com/YuukanOO/ease/todo"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -24,10 +25,10 @@ func NewServer() (s *Server, err error) {
 	s.Router.GET("/api/todos", s.List_765091)
 	s.Router.PUT("/api/todos/:id", s.Update_0cdc62)
 	s.Router.DELETE("/api/todos/:id", s.Delete_df53ad)
-	s.Router.GET("/api/_health", s.HealthCheck_06868b)
 	s.Router.GET("/api/without-params", s.WithoutParams_5fd7e9)
 	s.Router.GET("/api/raw", gin.WrapF(s.TodoService_9abf69.RawEndpoint))
 	s.Router.GET("/api/raw-without-receiver", gin.WrapF(todo_ca7678.RawWithoutReceiver))
+	s.Router.GET("/api/_health", s.HealthCheck_0e096a)
 
 	return s, nil
 }
@@ -49,7 +50,7 @@ func main() {
 func (s *Server) Create_9e7e22(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
 	var cmd todo_ca7678.TodoCreateCommand
-	if !bind(c, &cmd) {
+	if !Bind(c, &cmd) {
 		return
 	}
 	result_5a2298, err := s.TodoService_9abf69.Create(
@@ -57,7 +58,7 @@ func (s *Server) Create_9e7e22(c *gin.Context) {
 		cmd,
 	)
 	if err != nil {
-		handleError(c, err)
+		HandleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result_5a2298)
@@ -69,7 +70,7 @@ func (s *Server) List_765091(c *gin.Context) {
 		ctx,
 	)
 	if err != nil {
-		handleError(c, err)
+		HandleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result_5a2298)
@@ -77,9 +78,9 @@ func (s *Server) List_765091(c *gin.Context) {
 
 func (s *Server) Update_0cdc62(c *gin.Context) {
 	var ctx context_ea7792.Context = c.Request.Context()
-	var id uint = paramToInt[uint](c, "id")
+	var id uint = ParamToInt[uint](c, "id")
 	var cmd todo_ca7678.TodoUpdateCommand
-	if !bind(c, &cmd) {
+	if !Bind(c, &cmd) {
 		return
 	}
 	result_5a2298, err := s.TodoService_9abf69.Update(
@@ -88,30 +89,22 @@ func (s *Server) Update_0cdc62(c *gin.Context) {
 		cmd,
 	)
 	if err != nil {
-		handleError(c, err)
+		HandleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) Delete_df53ad(c *gin.Context) {
-	var id uint = paramToInt[uint](c, "id")
+	var id uint = ParamToInt[uint](c, "id")
 	err := s.TodoService_9abf69.Delete(
 		id,
 	)
 	if err != nil {
-		handleError(c, err)
+		HandleError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
-}
-
-func (s *Server) HealthCheck_06868b(c *gin.Context) {
-	var ctx context_ea7792.Context = c.Request.Context()
-	result_5a2298 := todo_ca7678.HealthCheck(
-		ctx,
-	)
-	c.JSON(http.StatusOK, result_5a2298)
 }
 
 func (s *Server) WithoutParams_5fd7e9(c *gin.Context) {
@@ -119,7 +112,12 @@ func (s *Server) WithoutParams_5fd7e9(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func paramToInt[T int | uint](c *gin.Context, name string) T {
+func (s *Server) HealthCheck_0e096a(c *gin.Context) {
+	result_5a2298 := ease_external_example_e02a9c.HealthCheck()
+	c.JSON(http.StatusOK, result_5a2298)
+}
+
+func ParamToInt[T int | uint](c *gin.Context, name string) T {
 	value, _ := strconv.Atoi(c.Param(name))
 	return T(value)
 }
@@ -129,7 +127,7 @@ type HttpError interface {
 	Status() int
 }
 
-func handleError(c *gin.Context, err error) {
+func HandleError(c *gin.Context, err error) {
 	c.Error(err)
 
 	httpErr, implementHttpErr := err.(HttpError)
@@ -142,7 +140,7 @@ func handleError(c *gin.Context, err error) {
 	c.JSON(httpErr.Status(), err)
 }
 
-func bind[T any](c *gin.Context, target *T) bool {
+func Bind[T any](c *gin.Context, target *T) bool {
 	if err := c.ShouldBind(target); err != nil {
 		c.AbortWithError(http.StatusUnprocessableEntity, err)
 		return false

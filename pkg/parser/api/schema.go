@@ -137,6 +137,7 @@ func parseEndpoint(directive *parser.Directive, handler *parser.Func) (*Endpoint
 		endpoint.params[i] = endpointParam
 	}
 
+	// Determine the return type of the handler by looking at the first non-error return value.
 	for _, ret := range endpoint.handler.Returns() {
 		if ret.Type().IsError() {
 			continue

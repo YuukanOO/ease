@@ -1,7 +1,7 @@
 // Simple package to test out ease capabilities.
 package todo
 
-//go:generate go run github.com/YuukanOO/ease/cmd github.com/YuukanOO/ease/todo...
+//go:generate go run github.com/YuukanOO/ease/cmd github.com/YuukanOO/ease/todo... github.com/YuukanOO/ease-external-example
 
 import (
 	contextalias "context"
@@ -9,10 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"text/template"
 )
-
-var a = template.Must(template.New("").Parse(""))
 
 var ErrNotFound = errors.New("not found")
 
@@ -83,14 +80,6 @@ var ErrOperationNotImplemented = NewAppError("operation_not_supported")
 // ease:api method=DELETE path=/api/todos/:id
 func (s *TodoService) Delete(id uint) error {
 	return ErrOperationNotImplemented
-}
-
-// Gets the server health
-// Just returns "ok" for now.
-//
-//ease:api method=GET path=/api/_health
-func HealthCheck(ctx contextalias.Context) string {
-	return "ok"
 }
 
 // ease:api path=/api/without-params

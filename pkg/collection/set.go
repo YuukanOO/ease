@@ -32,7 +32,7 @@ func (s *Set[T]) Set(key string, item T) T {
 
 // Same as Set but build the item only if not already found in the set to prevent
 // unneeded allocations.
-func (s *Set[T]) SetLazy(key string, item func() T) T {
+func (s *Set[T]) SetFunc(key string, item func() T) T {
 	if idx, found := s.indexes[key]; found {
 		return s.items[idx]
 	}
