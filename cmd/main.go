@@ -5,9 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YuukanOO/ease/pkg/generator"
 	"github.com/YuukanOO/ease/pkg/generator/gin"
-	"github.com/YuukanOO/ease/pkg/parser"
 	"github.com/YuukanOO/ease/pkg/parser/api"
 )
 
@@ -20,30 +18,21 @@ func main() {
 
 	pkgsToAnalyze := os.Args[1:]
 
-	// Instantiate specific parsers
-	apiParser := api.New()
-
-	result, err := parser.
-		New(apiParser).
-		Parse(pkgsToAnalyze...)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// Instantiate specific generators
-	ginGenerator := gin.New(apiParser.Schema())
-
-	// Retrieve the working directory to compute the output path
 	wd, err := os.Getwd()
 
 	if err != nil {
 		panic(err)
 	}
 
-	if err := generator.
-		New(filepath.Join(wd, "generated"), ginGenerator).
-		Generate(result); err != nil {
+	// Default parsers / generators
+	apiParser := api.New()
+	ginGenerator := gin.New(apiParser.Schema())
+
+	if err := Run(
+		WithPackages(pkgsToAnalyze...),
+		WithParsers(apiParser),
+		WithGenerators(filepath.Join(wd, "generated"), ginGenerator),
+	); err != nil {
 		panic(err)
 	}
 }
